@@ -1,0 +1,2 @@
+:set -package aeson
+:m +Data.Aeson

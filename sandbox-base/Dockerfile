@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y git curl build-essential libgmp-dev vim
 # Create haskeller user
 RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller
 USER haskeller
-WORKDIR /home/haskeller
+WORKDIR "/home/haskeller"
 
 # Install oh-my-zsh for user's comfort
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
@@ -34,11 +34,13 @@ RUN curl -L --output /tmp/gotty.tar.gz https://github.com/sorenisanerd/gotty/rel
   && tar -vxf /tmp/gotty.tar.gz \
   && mv ./gotty ~/bin/
 
-# Gotty - shell terminal
+# Gotty - shell
 EXPOSE 8000
 
 # Gotty - ghci
 EXPOSE 8001
 
-COPY ./entrypoint.sh /
-ENTRYPOINT [ "/entrypoint.sh" ]
+WORKDIR /home/haskeller/sandbox
+
+COPY ./entrypoint.sh /home/haskeller/
+ENTRYPOINT [ "/home/haskeller/entrypoint.sh" ]

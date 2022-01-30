@@ -1,0 +1,5 @@
+:set -package aeson
+:m +Data.Aeson
+
+:set -package servant
+:m +Servant.API
