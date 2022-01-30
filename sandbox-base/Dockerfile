@@ -6,7 +6,8 @@ USER root
 RUN apt-get update && apt-get install -y git curl build-essential libgmp-dev vim zsh
 
 # Create haskeller user
-RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller
+RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
+  && addgroup haskeller && adduser haskeller haskeller
 USER haskeller
 WORKDIR "/home/haskeller"
 
