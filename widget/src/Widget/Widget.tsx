@@ -3,8 +3,8 @@ import '../styles/normalize.css';
 import '../styles/globals.css';
 import * as s from './Widget.module.css';
 
-import React, { useRef, useEffect, RefObject, useState } from 'react';
-import Editor from './Editor';
+import React, { useState } from 'react';
+
 import Tabs, { Tab } from './Tabs';
 
 export type WidgetProps = {
@@ -33,7 +33,12 @@ export const Widget = (props: WidgetProps) => {
 
       <div className={s.tabs}>
         <div className={`${s.tab} ${activeTab === 'editor' ? s.activeTab : ''}`}>
-          <Editor code={code} onChange={setCode} />
+          <iframe
+            className={s.terminal}
+            src={`http://${props.sandboxUrl}/editor`}
+            allow='autoplay'
+            frameBorder="0"
+          />
         </div>
 
         <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>

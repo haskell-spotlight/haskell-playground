@@ -1,7 +1,6 @@
 const path = require("path");
 const TerserPlugin = require("terser-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MonacoWebpackPlugin = require("monaco-editor-webpack-plugin");
 
 module.exports = () => {
   const isProd = process.env["NODE_ENV"] === "production";
@@ -40,8 +39,7 @@ module.exports = () => {
     plugins: [
       new HtmlWebpackPlugin({
         title: "Haskell Playground",
-      }),
-      new MonacoWebpackPlugin(),
+      })
     ],
     module: {
       rules: [
