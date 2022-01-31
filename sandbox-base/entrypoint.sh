@@ -2,13 +2,15 @@
 
 set -eo pipefail
 
+envsubst '${HSPG_PUBLIC_URL} ${HSPG_ORIGIN}' </etc/nginx/template.nginx.conf >/etc/nginx/nginx.conf
+
 nginx &
 
 # Expose shell terminal
 gotty \
   --port 9000 \
   --permit-write \
-  --ws-origin "localhost:8080" \
+  --ws-origin "${HSPG_ORIGIN}" \
   --width 140 \
   --height 80 \
   --term xterm \
@@ -20,7 +22,7 @@ gotty \
 gotty \
   --port 9001 \
   --permit-write \
-  --ws-origin "localhost:8080" \
+  --ws-origin "${HSPG_ORIGIN}" \
   --width 140 \
   --height 80 \
   --term xterm \
