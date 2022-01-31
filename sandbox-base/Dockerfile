@@ -35,11 +35,21 @@ RUN curl -L --output /tmp/gotty.tar.gz https://github.com/sorenisanerd/gotty/rel
   && tar -vxf /tmp/gotty.tar.gz \
   && mv ./gotty ~/bin/
 
-# Gotty - shell
-EXPOSE 8000
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get install -y nginx && chmod -R 777 /var/log/nginx /var/lib/nginx /var/run
+USER haskeller
 
-# Gotty - ghci
-EXPOSE 8001
+COPY ./nginx.conf /etc/nginx/nginx.conf
+
+# # Gotty - shell
+# EXPOSE 9000
+
+# # Gotty - ghci
+# EXPOSE 9001
+
+# Nginx
+EXPOSE 8080
 
 WORKDIR /home/haskeller/sandbox
 

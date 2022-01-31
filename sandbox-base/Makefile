@@ -2,7 +2,7 @@
 
 .PHONY: dev
 dev: ## Run container for development
-	docker run -it -p 8000:8000 -p 8001:8001 visortelle/haskell-playground-sandbox-base:main
+	docker run -it -p 8080:8080 visortelle/haskell-playground-sandbox-base:main
 
 .PHONY: build
 build: ## Build docker image
