@@ -3,7 +3,9 @@ FROM ubuntu@sha256:57df66b9fc9ce2947e434b4aa02dbe16f6685e20db0c170917d4a1962a5fe
 
 USER root
 
-RUN apt-get update && apt-get install -y git curl build-essential libgmp-dev vim zsh
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git curl build-essential libgmp-dev vim zsh nginx \
+  && chmod -R 777 /var/log/nginx /var/lib/nginx /var/run
 
 # Create haskeller user
 RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
@@ -35,18 +37,7 @@ RUN curl -L --output /tmp/gotty.tar.gz https://github.com/sorenisanerd/gotty/rel
   && tar -vxf /tmp/gotty.tar.gz \
   && mv ./gotty ~/bin/
 
-USER root
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get install -y nginx && chmod -R 777 /var/log/nginx /var/lib/nginx /var/run
-USER haskeller
-
 COPY ./nginx.conf /etc/nginx/nginx.conf
-
-# # Gotty - shell
-# EXPOSE 9000
-
-# # Gotty - ghci
-# EXPOSE 9001
 
 # Nginx
 EXPOSE 8080
