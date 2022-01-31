@@ -1,0 +1,17 @@
+.widget {
+  display: flex;
+  flex: 1;
+  height: inherit;
+  min-height: inherit;
+  flex-direction: column;
+}
+
+.tab {
+  overflow: hidden;
+  display: none;
+  flex: 1;
+}
+
+.activeTab {
+  display: flex;;
+}
