@@ -6,6 +6,11 @@
   flex-direction: column;
 }
 
+.tabs {
+  display: flex;
+  flex: 1;
+}
+
 .tab {
   overflow: hidden;
   display: none;
@@ -14,4 +19,8 @@
 
 .activeTab {
   display: flex;;
+}
+
+.terminal {
+  flex: 1;
 }

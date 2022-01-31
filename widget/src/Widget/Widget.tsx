@@ -4,41 +4,57 @@ import '../styles/globals.css';
 import * as s from './Widget.module.css';
 
 import React, { useRef, useEffect, RefObject, useState } from 'react';
+import Editor from './Editor';
 import Tabs, { Tab } from './Tabs';
 
 export type WidgetProps = {
   sandboxUrl: string,
+  initialCode: string
 };
 
 export const Widget = (props: WidgetProps) => {
-  const [activeTab, setActiveTab] = useState('repl');
+  const [activeTab, setActiveTab] = useState('editor');
+  const [code, setCode] = useState(props.initialCode);
 
   const tabs: Tab[] = [{
-    id: 'shell',
-    title: 'Shell'
+    id: 'editor',
+    title: 'Editor'
   }, {
     id: 'repl',
     title: 'REPL'
-  }];
+  }, {
+    id: 'shell',
+    title: 'Shell'
+  },];
 
   return (
     <div className={s.widget}>
       <Tabs activeTab={activeTab} tabs={tabs} onTabChange={setActiveTab} />
 
-      <iframe
-        className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}
-        src={`http://${props.sandboxUrl}/repl`}
-        allow='autoplay'
-        frameBorder="0"
-      />
+      <div className={s.tabs}>
+        <div className={`${s.tab} ${activeTab === 'editor' ? s.activeTab : ''}`}>
+          <Editor code={code} onChange={setCode} />
+        </div>
 
-      <iframe
-        className={`${s.tab} ${activeTab === 'shell' ? s.activeTab : ''}`}
-        src={`http://${props.sandboxUrl}/shell`}
-        allow='autoplay'
-        frameBorder="0"
-      />
-    </div>
+        <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>
+          <iframe
+            className={s.terminal}
+            src={`http://${props.sandboxUrl}/repl`}
+            allow='autoplay'
+            frameBorder="0"
+          />
+        </div>
+
+        <div className={`${s.tab} ${activeTab === 'shell' ? s.activeTab : ''}`}>
+          <iframe
+            className={s.terminal}
+            src={`http://${props.sandboxUrl}/shell`}
+            allow='autoplay'
+            frameBorder="0"
+          />
+        </div>
+      </div>
+    </div >
   );
 }
 

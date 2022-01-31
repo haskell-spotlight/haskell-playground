@@ -8,6 +8,8 @@ nginx &
 
 # Expose shell terminal
 gotty \
+  --reconnect \
+  --reconnect-time 600 \
   --port 9000 \
   --permit-write \
   --ws-origin "${HSPG_ORIGIN}" \
@@ -20,6 +22,8 @@ gotty \
 
 # Expose ghci terminal
 gotty \
+  --reconnect \
+  --reconnect-time 600 \
   --port 9001 \
   --permit-write \
   --ws-origin "${HSPG_ORIGIN}" \

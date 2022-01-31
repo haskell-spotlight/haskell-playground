@@ -15,7 +15,7 @@ export function renderWidget() {
 
   document.body.appendChild(widgetRoot);
 
-  render(<Widget sandboxUrl='localhost:8080' />, widgetRoot);
+  render(<Widget sandboxUrl='localhost:8080' initialCode='supportProjectAt = "https://ko-fi.com/visortelle"'/>, widgetRoot);
 }
 
 renderWidget();
