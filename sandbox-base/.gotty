@@ -1,5 +1,5 @@
 preferences {
-  font_size = 14
+  font_size = 12
   font_family = "'Fira Code', monospace"
   scrollbar_visible = false
 }

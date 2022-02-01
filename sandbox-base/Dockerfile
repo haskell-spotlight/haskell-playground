@@ -8,8 +8,14 @@ RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskelle
   && addgroup haskeller && adduser haskeller haskeller
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y git curl wget build-essential libgmp-dev zsh gettext-base nginx zip unzip
-RUN apt-get install -y neovim nano
+ENV COLORTERM=truecolor
+RUN apt-get update && apt-get install -y \
+  software-properties-common build-essential libgmp-dev \
+  ruby python python3 python3-pip \
+  git curl wget zsh gettext-base nginx zip unzip
+
+# Install optional programs
+RUN apt-get install jq httpie xh tree ripgrep silversearcher-ag
 
 RUN chmod -R 777 /etc/nginx /var/log/nginx /var/lib/nginx /var/run
 
@@ -19,9 +25,23 @@ WORKDIR "/home/haskeller"
 # Install oh-my-zsh for user's comfort
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# Add syntax highlighting to the nano editor
+#######################
+# EDITORS SETUP BEGIN #
+#######################
+
+USER root
+RUN apt-get install -y neovim nano micro
+USER haskeller
+
+# nano
 RUN curl https://raw.githubusercontent.com/scopatz/nanorc/ae1e6021886a0b4215e1ca8617c6d746b5a957ae/install.sh | sh \
   && echo "include $install_path/*.nanorc" >> ~/.nanorc
+
+## TODO - neovim and probably emacs
+
+#####################
+# EDITORS SETUP END #
+#####################
 
 RUN mkdir ~/bin
 ENV PATH="$PATH:/home/haskeller/bin:/home/haskeller/.ghcup/bin"

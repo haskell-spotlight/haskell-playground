@@ -6,6 +6,7 @@ import * as s from './Widget.module.css';
 import React, { useState } from 'react';
 
 import Tabs, { Tab } from './Tabs';
+import Editor from './Editor';
 
 export type WidgetProps = {
   sandboxUrl: string,
@@ -14,7 +15,6 @@ export type WidgetProps = {
 
 export const Widget = (props: WidgetProps) => {
   const [activeTab, setActiveTab] = useState('editor');
-  const [code, setCode] = useState(props.initialCode);
 
   const tabs: Tab[] = [{
     id: 'editor',
@@ -33,12 +33,7 @@ export const Widget = (props: WidgetProps) => {
 
       <div className={s.tabs}>
         <div className={`${s.tab} ${activeTab === 'editor' ? s.activeTab : ''}`}>
-          <iframe
-            className={s.terminal}
-            src={`http://${props.sandboxUrl}/editor`}
-            allow='autoplay'
-            frameBorder="0"
-          />
+          <Editor sandboxUrl={props.sandboxUrl}  />
         </div>
 
         <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>

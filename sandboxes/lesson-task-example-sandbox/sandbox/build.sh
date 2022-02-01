@@ -1,6 +1,6 @@
 #!/bin/bash
-
-set -eo pipefail
+set -e
+cd "${HASKELL_SANDBOX_ROOT}"
 
 cabal update
 cabal build
