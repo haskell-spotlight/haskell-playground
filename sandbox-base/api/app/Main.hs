@@ -58,10 +58,9 @@ listDirectoryRecursive filePath = do
       if isDirectory
         then do
           files <- SD.listDirectory filePath
-
           childrenM <- mapM (listDirectoryRecursive . FP.combine filePath) files
-
           let children = Data.Maybe.catMaybes childrenM
+
           let directoryEntry = DirectoryEntry Directory {name = Text.pack $ FP.takeFileName filePath, children = children}
           pure $ Just directoryEntry
         else do
