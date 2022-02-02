@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "app/Main.hs"
+      component: "api:exe:api"
+
+    - path: "app/Config.hs"
+      component: "api:exe:api"
+
+    - path: "app/Exec.hs"
+      component: "api:exe:api"
+
+    - path: "app/Tree.hs"
+      component: "api:exe:api"
