@@ -14,8 +14,13 @@ RUN apt-get update && apt-get install -y \
   ruby python python3 python3-pip \
   git curl wget zsh gettext-base nginx zip unzip
 
+# Install NodeJS
+RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh \
+  && bash nodesource_setup.sh \
+  && apt-get install -y nodejs
+
 # Install optional programs
-RUN apt-get install jq httpie xh tree ripgrep silversearcher-ag
+RUN apt-get install -y jq httpie tree ripgrep silversearcher-ag
 
 RUN chmod -R 777 /etc/nginx /var/log/nginx /var/lib/nginx /var/run
 
