@@ -3,7 +3,7 @@
 set -eo pipefail
 
 export EDITOR=micro
-export HASKELL_SANDBOX_ROOT=$(pwd)
+export HSPG_SANDBOX_ROOT=$(pwd)
 
 envsubst '${HSPG_PUBLIC_URL} ${HSPG_ORIGIN}' </etc/nginx/template.nginx.conf >/etc/nginx/nginx.conf
 

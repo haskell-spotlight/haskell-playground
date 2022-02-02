@@ -48,6 +48,8 @@ RUN curl https://raw.githubusercontent.com/scopatz/nanorc/ae1e6021886a0b4215e1ca
 # EDITORS SETUP END #
 #####################
 
+ENV SHELL=/bin/zsh
+
 RUN mkdir ~/bin
 ENV PATH="$PATH:/home/haskeller/bin:/home/haskeller/.ghcup/bin"
 
@@ -70,12 +72,12 @@ RUN curl -L --output /tmp/gotty.tar.gz https://github.com/haskell-spotlight/gott
   && mv ./gotty ~/bin/
 COPY ./.gotty /home/haskeller/.gotty
 
-# Nginx
-EXPOSE 8080
-
 WORKDIR /home/haskeller/sandbox
+ENV HSPG_SANDBOX_ROOT=/home/haskeller/sandbox
 
 COPY ./template.nginx.conf /etc/nginx/template.nginx.conf
 COPY ./entrypoint.sh /home/haskeller/
+
+EXPOSE 8080
 
 ENTRYPOINT [ "/home/haskeller/entrypoint.sh" ]
