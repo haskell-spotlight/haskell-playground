@@ -21,13 +21,13 @@ import Network.Wai.Handler.Warp
   )
 import Network.Wai.Logger (withStdoutLogger)
 import Servant
-import Tree (TreeApi, getTreeHandler)
+import Fs (FsApi, getFsHandler)
 
-type SandboxApi = TreeApi :<|> ExecApi
+type SandboxApi = FsApi :<|> ExecApi
 
 sandboxApiServer :: Config.Config -> Server SandboxApi
 sandboxApiServer config =
-  getTreeHandler config :<|> postExecHandler config
+  getFsHandler config :<|> postExecHandler config
 
 sandboxApi :: Proxy SandboxApi
 sandboxApi = Proxy

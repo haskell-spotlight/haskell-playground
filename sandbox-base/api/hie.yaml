@@ -9,5 +9,5 @@ cradle:
     - path: "app/Exec.hs"
       component: "api:exe:api"
 
-    - path: "app/Tree.hs"
+    - path: "app/Fs.hs"
       component: "api:exe:api"

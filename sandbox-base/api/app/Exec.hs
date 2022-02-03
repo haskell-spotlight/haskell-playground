@@ -27,7 +27,7 @@ instance ToJSON ExitCode
 
 instance ToJSON Exec
 
-type ExecApi = "api" :> "sandbox" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Exec)
+type ExecApi = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Exec)
 
 postExecHandler config command = do
   liftIO $ putStrLn $ "Requested command: " <> command
