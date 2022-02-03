@@ -46,6 +46,7 @@ executable api
     , wai
     , wai-logger
     , warp
+    , universe-base
 
   hs-source-dirs:   app
   default-language: Haskell2010

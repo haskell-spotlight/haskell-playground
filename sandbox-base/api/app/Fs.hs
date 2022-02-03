@@ -6,29 +6,64 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Fs (Fs, FsChild, FsApi, listDirectoryRecursive, getFsHandler) where
+module Fs (Fs, FsNode, FsApi, listDirectoryRecursive, getFsHandler) where
 
 import qualified Config
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
+import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromJust)
-import qualified Data.Text as T
-import Data.Tree
+import Data.Tree (Tree (rootLabel))
+import qualified Data.Tree as Data.List
+import qualified Data.Tree as TR
+import Data.Universe.Helpers (diagonal)
 import GHC.Generics (Generic)
 import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data FsChild = File {name :: T.Text, isExecutable :: Bool} | Dir {name :: T.Text}
+data FsNode = File {name :: FilePath, isExecutable :: Bool} | Dir {name :: FilePath}
   deriving (Eq, Show, Generic)
 
-instance ToJSON FsChild
+instance ToJSON FsNode
 
-type Fs = Tree FsChild
+type Fs = TR.Tree FsNode
 
 type FsApi =
   "api" :> "fs" :> "tree" :> Get '[JSON] Fs
-    :<|> "api" :> "fs" :> "executables" :> Get '[JSON] Fs
+    :<|> "api" :> "fs" :> "list" :> Get '[JSON] [FilePath]
+    :<|> "api" :> "fs" :> "executables" :> "tree" :> Get '[JSON] Fs
+    :<|> "api" :> "fs" :> "executables" :> "list" :> Get '[JSON] [FilePath]
+
+treePaths :: Tree a -> [[a]]
+treePaths (TR.Node x []) = [[x]]
+treePaths (TR.Node x children) = map (x :) (p : ps)
+  where
+    p : ps = diagonal (map treePaths children)
+
+pathsTreeToPaths :: TR.Tree FilePath -> [FilePath]
+pathsTreeToPaths tr = map mapFn (treePaths tr)
+  where
+    mapFn pathChunks = intercalate "/" (["."] <> pathChunks)
+
+fsToPathsTree :: TR.Tree FsNode -> TR.Tree FilePath
+fsToPathsTree = fmap fn where fn fsNode = name fsNode
+
+fsTreeToList :: TR.Tree FsNode -> [FilePath]
+fsTreeToList = pathsTreeToPaths . fsToPathsTree
+
+filterExecutables :: Fs -> Fs
+filterExecutables = TR.foldTree foldFn
+  where
+    foldFn :: FsNode -> [Fs] -> Fs
+    foldFn File {name, isExecutable} subForest =
+      if isExecutable
+        then TR.Node {rootLabel = File {name, isExecutable}, subForest}
+        else TR.Node {rootLabel = File {name, isExecutable}, subForest = []}
+    foldFn Dir {name} subForest = TR.Node {rootLabel = Dir {name}, subForest = filter sfn subForest}
+      where
+        sfn TR.Node {rootLabel = File {isExecutable}} = isExecutable
+        sfn TR.Node {rootLabel = Dir {}, subForest} = not (all (null . filterExecutables) subForest)
 
 listDirectoryRecursive :: FilePath -> [FilePath] -> IO (Maybe Fs)
 listDirectoryRecursive filePath excludeFiles = do
@@ -38,7 +73,7 @@ listDirectoryRecursive filePath excludeFiles = do
   if isExcluded || not isExists
     then pure Nothing
     else do
-      let name = T.pack $ FP.takeFileName filePath
+      let name = FP.takeFileName filePath
       isDir <- SD.doesDirectoryExist filePath
       if isDir
         then do
@@ -46,37 +81,40 @@ listDirectoryRecursive filePath excludeFiles = do
           childrenM <- mapM (\c -> listDirectoryRecursive (FP.combine filePath c) excludeFiles) files
           let subForest = Data.Maybe.catMaybes childrenM
 
-          let dir = Node {rootLabel = Dir {name}, subForest}
+          let dir = TR.Node {rootLabel = Dir {name}, subForest}
           pure $ Just dir
         else do
           p <- SD.getPermissions filePath
           let isExecutable = SD.executable p
-          let file = Node {rootLabel = File {name, isExecutable}, subForest = []}
+          let file = TR.Node {rootLabel = File {name, isExecutable}, subForest = []}
           pure $ Just file
 
-filterExecutables :: Fs -> Fs
-filterExecutables = foldTree fn
-  where
-    fn :: FsChild -> [Fs] -> Fs
-    fn File {name, isExecutable} subForest =
-      if isExecutable
-        then Node {rootLabel = File {name, isExecutable}, subForest}
-        else Node {rootLabel = File {name, isExecutable}, subForest = []}
-    fn Dir {name} subForest = Node {rootLabel = Dir {name}, subForest = filter sfn subForest}
-      where
-        sfn Node {rootLabel = File {isExecutable}} = isExecutable
-        sfn Node {rootLabel = Dir {}, subForest} = not (all (null . filterExecutables) subForest)
-
-fsAll config = do
+fsTree config = do
   dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
-fsCommands config = do
+fsList config = do
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  case dir of
+    Just _ -> pure $ fsTreeToList $ fromJust dir
+    _ -> throwError err500 {errBody = "Sandbox root directory not found"}
+
+fsExecutablesTree config = do
   dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ filterExecutables $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
-getFsHandler config = fsAll config :<|> fsCommands config
+fsExecutablesList config = do
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  case dir of
+    Just _ -> pure $ fsTreeToList $ filterExecutables $ fromJust dir
+    _ -> throwError err500 {errBody = "Sandbox root directory not found"}
+
+getFsHandler config =
+  fsTree config
+    :<|> fsList config
+    :<|> fsExecutablesTree config
+    :<|> fsExecutablesList config
