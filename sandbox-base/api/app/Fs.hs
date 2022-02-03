@@ -6,31 +6,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Fs (FsApi, File, Dir, listDirectoryRecursive, getFsHandler) where
+module Fs (Fs, FsChild, FsApi, listDirectoryRecursive, getFsHandler) where
 
 import qualified Config
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
-import Data.List (foldl')
 import Data.Maybe (catMaybes, fromJust)
 import qualified Data.Text as T
 import Data.Tree
-import qualified Data.Tree as Tree
 import GHC.Generics (Generic)
 import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data File = File {name :: T.Text, isDir :: Bool, isCommand :: Bool}
+data FsChild = File {name :: T.Text, isExecutable :: Bool} | Dir {name :: T.Text}
   deriving (Eq, Show, Generic)
 
-instance ToJSON File
+instance ToJSON FsChild
 
-type Dir = Tree File
+type Fs = Tree FsChild
 
-type FsApi = "api" :> "fs" :> Get '[JSON] Dir
+type FsApi =
+  "api" :> "fs" :> "tree" :> Get '[JSON] Fs
+    :<|> "api" :> "fs" :> "executables" :> Get '[JSON] Fs
 
-listDirectoryRecursive :: FilePath -> IO (Maybe Dir)
+listDirectoryRecursive :: FilePath -> IO (Maybe Fs)
 listDirectoryRecursive filePath = do
   isExists <- SD.doesPathExist filePath
   if not isExists
@@ -44,26 +44,37 @@ listDirectoryRecursive filePath = do
           childrenM <- mapM (listDirectoryRecursive . FP.combine filePath) files
           let subForest = Data.Maybe.catMaybes childrenM
 
-          let dir = Node {rootLabel = File {name, isDir, isCommand = False}, subForest}
+          let dir = Node {rootLabel = Dir {name}, subForest}
           pure $ Just dir
         else do
           p <- SD.getPermissions filePath
-          let isCommand = SD.executable p
-          let file = Node {rootLabel = File {name, isCommand, isDir}, subForest = []}
+          let isExecutable = SD.executable p
+          let file = Node {rootLabel = File {name, isExecutable}, subForest = []}
           pure $ Just file
 
-getFsHandler config = do
+filterExecutables :: Fs -> Fs
+filterExecutables = foldTree fn
+  where
+    fn :: FsChild -> [Fs] -> Fs
+    fn File {name, isExecutable} subForest =
+      if isExecutable
+        then Node {rootLabel = File {name, isExecutable}, subForest}
+        else Node {rootLabel = File {name, isExecutable}, subForest = []}
+    fn Dir {name} subForest = Node {rootLabel = Dir {name}, subForest = filter sfn subForest}
+      where
+        sfn Node {rootLabel = File {isExecutable}} = isExecutable
+        sfn Node {rootLabel = Dir {}, subForest} = not (all (null . filterExecutables) subForest)
+
+fsAll config = do
   dir <- liftIO $ listDirectoryRecursive $ Config.sandboxRoot config
   case dir of
     Just _ -> pure $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
--- getExecutableChildren :: Dir -> [FileSystemEntry]
--- getExecutableChildren dir = filter fn (children dir)
---   where
---     fn (FileEntry file) = isExecutable file
---     fn _ = False
+fsCommands config = do
+  dir <- liftIO $ listDirectoryRecursive $ Config.sandboxRoot config
+  case dir of
+    Just _ -> pure $ filterExecutables $ fromJust dir
+    _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
--- filterExecutables :: Directory -> Directory
--- filterExecutables dir = foldl' f (Directory { name = name dir, children = []} ) dir where
---   f parDir currDir =
+getFsHandler config = fsAll config :<|> fsCommands config
