@@ -30,10 +30,12 @@ type FsApi =
   "api" :> "fs" :> "tree" :> Get '[JSON] Fs
     :<|> "api" :> "fs" :> "executables" :> Get '[JSON] Fs
 
-listDirectoryRecursive :: FilePath -> IO (Maybe Fs)
-listDirectoryRecursive filePath = do
+listDirectoryRecursive :: FilePath -> [FilePath] -> IO (Maybe Fs)
+listDirectoryRecursive filePath excludeFiles = do
+  let isExcluded = any (\toExclude -> toExclude == FP.takeFileName filePath) excludeFiles
   isExists <- SD.doesPathExist filePath
-  if not isExists
+
+  if isExcluded || not isExists
     then pure Nothing
     else do
       let name = T.pack $ FP.takeFileName filePath
@@ -41,7 +43,7 @@ listDirectoryRecursive filePath = do
       if isDir
         then do
           files <- SD.listDirectory filePath
-          childrenM <- mapM (listDirectoryRecursive . FP.combine filePath) files
+          childrenM <- mapM (\c -> listDirectoryRecursive (FP.combine filePath c) excludeFiles) files
           let subForest = Data.Maybe.catMaybes childrenM
 
           let dir = Node {rootLabel = Dir {name}, subForest}
@@ -66,13 +68,13 @@ filterExecutables = foldTree fn
         sfn Node {rootLabel = Dir {}, subForest} = not (all (null . filterExecutables) subForest)
 
 fsAll config = do
-  dir <- liftIO $ listDirectoryRecursive $ Config.sandboxRoot config
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
 fsCommands config = do
-  dir <- liftIO $ listDirectoryRecursive $ Config.sandboxRoot config
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ filterExecutables $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
