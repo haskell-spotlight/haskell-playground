@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module ReverseProxy (Config (Config), Upstream (Upstream), run, renderNginxConfig) where
+module ReverseProxy (Config (Config), Upstream (Upstream, name, addr), publicUrl, upstreams, nginxConfigPath, run, renderNginxConfig) where
 
 import qualified Data.ByteString as SD
 import qualified Data.Text as T
@@ -16,20 +16,21 @@ data Upstream = Upstream
 
 data Config = Config
   { publicUrl :: T.Text,
-    upstreams :: [Upstream]
+    upstreams :: [Upstream],
+    nginxConfigPath :: FilePath
   }
 
-run :: Config -> FilePath -> IO ()
-run config nginxConfigPath = do
+run :: Config -> IO ()
+run config = do
   let nginxConfigStr = renderNginxConfig config
-  SD.writeFile nginxConfigPath (encodeUtf8 nginxConfigStr)
+  SD.writeFile (nginxConfigPath config) (encodeUtf8 nginxConfigStr)
 
-  (_, stdout, stderr, configTest) <- P.createProcess $ P.proc "nginx" ["-c", nginxConfigPath, "-t"]
+  (_, stdout, stderr, configTest) <- P.createProcess $ P.proc "nginx" ["-c", nginxConfigPath config, "-t"]
   configTestExitCode <- P.waitForProcess configTest
   if configTestExitCode == ExitSuccess
     then do
       putStrLn "Starting nginx"
-      _ <- P.createProcess $ P.proc "nginx" ["-c", nginxConfigPath]
+      _ <- P.createProcess $ P.proc "nginx" ["-c", nginxConfigPath config]
       pure ()
     else do
       putStrLn $ "Nginx config test failed: " <> show stdout <> show stderr

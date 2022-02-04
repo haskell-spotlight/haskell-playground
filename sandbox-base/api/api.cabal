@@ -25,12 +25,13 @@ executable api
   main-is:          Main.hs
 
   ghc-options:
+    -threaded
     -Wall
 
   default-extensions: OverloadedStrings
 
-  -- Modules included in this executable, other than Main.
-  other-modules: Config, Exec, Fs, ReverseProxy
+  -- Modules included in this command, other than Main.
+  other-modules: Config, Commands, Fs, ReverseProxy
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

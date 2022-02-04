@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Config (Config, getConfig, excludeFiles, sandboxRoot, port, origin, publicUrl) where
+module Config (Config, getConfig, excludeFiles, sandboxRoot, port, origin, publicUrl, nginxConfigPath) where
 
 import qualified Data.Text as T
 import System.Environment (getEnv)
@@ -14,7 +14,7 @@ data Config = Config
     publicUrl :: T.Text,
     sandboxRoot :: FilePath,
     excludeFiles :: [FilePath],
-    nginxConf :: FilePath,
+    nginxConfigPath :: FilePath,
     nginxPort :: Int
   }
 
@@ -24,7 +24,7 @@ getConfig = do
   origin <- getEnv "HSPG_ORIGIN"
   publicUrl <- getEnv "HSPG_PUBLIC_URL"
   sandboxRoot <- getEnv "HSPG_SANDBOX_ROOT"
-  nginxConf <- getEnv "HSPG_NGINX_CONF"
+  nginxConfigPath <- getEnv "HSPG_NGINX_CONFIG_PATH"
 
   _nginxPort <- getEnv "HSPG_NGINX_PORT"
   let nginxPort = read _nginxPort
@@ -40,6 +40,6 @@ getConfig = do
         publicUrl = T.pack publicUrl,
         sandboxRoot,
         excludeFiles,
-        nginxConf,
+        nginxConfigPath,
         nginxPort
       }

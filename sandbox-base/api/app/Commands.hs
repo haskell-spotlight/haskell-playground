@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Exec (Exec, ExecApi, postExecHandler) where
+module Commands (Command, Api, postCommandsHandler) where
 
 import qualified Config
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -19,34 +19,34 @@ import qualified System.Directory as SD
 import qualified System.FilePath as FP
 import qualified System.Process as P
 
-data Exec = Exec {webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
+data Command = Command {webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
   deriving (Eq, Show, Generic)
 
 instance ToJSON ExitCode
 
-instance ToJSON Exec
+instance ToJSON Command
 
-type ExecApi = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Exec)
+type Api = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Command)
 
-postExecHandler config executableRelPath = do
-  liftIO $ putStrLn $ "Requested command: " <> executableRelPath
+postCommandsHandler config commandRelPath = do
+  liftIO $ putStrLn $ "Requested command: " <> commandRelPath
 
-  if FP.isAbsolute executableRelPath
+  if FP.isAbsolute commandRelPath
     then do
-      throwError err400 {errBody = LChar8.pack $ "Executable path is and absolute path, but relative to sandbox root should be provided: " <> executableRelPath}
+      throwError err400 {errBody = LChar8.pack $ "Command path is and absolute path, but relative to sandbox root should be provided: " <> commandRelPath}
     else do
-      let executableRelPathAbsPath = FP.combine (Config.sandboxRoot config) executableRelPath
-      isExecutableFound <- liftIO $ SD.doesFileExist executableRelPathAbsPath
+      let commandRelPathAbsPath = FP.combine (Config.sandboxRoot config) commandRelPath
+      isCommandFound <- liftIO $ SD.doesFileExist commandRelPathAbsPath
 
-      permissions <- liftIO $ SD.getPermissions executableRelPathAbsPath
-      isDirectory <- liftIO $ SD.doesDirectoryExist executableRelPathAbsPath
-      let isExecutable = not isDirectory && SD.executable permissions
+      permissions <- liftIO $ SD.getPermissions commandRelPathAbsPath
+      isDirectory <- liftIO $ SD.doesDirectoryExist commandRelPathAbsPath
+      let isCommand = not isDirectory && SD.executable permissions
 
-      if not isExecutableFound || not isExecutable
+      if isCommandFound && isCommand
         then do
-          throwError err400 {errBody = LChar8.pack $ "Can't process the command request. Command file may not exist or be not executableRelPath." <> " Path: " <> executableRelPathAbsPath <> " Is executableRelPath file: " <> show isExecutable}
+          throwError err400 {errBody = LChar8.pack $ "Can't process the command request. Command file may not exist or be not commandRelPath." <> " Path: " <> commandRelPathAbsPath <> " Is commandRelPath file: " <> show isCommand}
         else do
-          liftIO $ putStrLn $ "Executing: " <> executableRelPathAbsPath
+          liftIO $ putStrLn $ "Commandsuting: " <> commandRelPathAbsPath
 
           (gottyPort, _) <- liftIO openFreePort
 
@@ -63,7 +63,7 @@ postExecHandler config executableRelPath = do
                   "9",
                   "--term",
                   "xterm",
-                  executableRelPathAbsPath
+                  commandRelPathAbsPath
                 ]
 
           (_, _, _, p) <- liftIO $ P.createProcess $ P.proc "gotty" gottyArgs
@@ -71,7 +71,7 @@ postExecHandler config executableRelPath = do
           exitCode <- liftIO $ P.getProcessExitCode p
 
           let exec =
-                Exec
+                Command
                   { webTerminalUrl = "abc",
                     pid = T.pack $ show pid, -- XXX there should be a better way to encode pid. Please fix it if you know how.
                     exitCode = exitCode

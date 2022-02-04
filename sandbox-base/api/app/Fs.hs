@@ -5,7 +5,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Fs (Fs, FsNode, FsApi, listDirectoryRecursive, getFsHandler) where
+module Fs (Fs, Node, Api, listDirectoryRecursive, getFsHandler, commandsList) where
 
 import qualified Config
 import Control.Monad.IO.Class (liftIO)
@@ -21,18 +21,18 @@ import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data FsNode = File {name :: FilePath, isExecutable :: Bool} | Dir {name :: FilePath}
+data Node = File {name :: FilePath, isCommand :: Bool} | Dir {name :: FilePath}
   deriving (Eq, Show, Generic)
 
-instance ToJSON FsNode
+instance ToJSON Node
 
-type Fs = TR.Tree FsNode
+type Fs = TR.Tree Node
 
-type FsApi =
+type Api =
   "api" :> "fs" :> "tree" :> Get '[JSON] Fs
     :<|> "api" :> "fs" :> "list" :> Get '[JSON] [FilePath]
-    :<|> "api" :> "fs" :> "executables" :> "tree" :> Get '[JSON] Fs
-    :<|> "api" :> "fs" :> "executables" :> "list" :> Get '[JSON] [FilePath]
+    :<|> "api" :> "fs" :> "commands" :> "tree" :> Get '[JSON] Fs
+    :<|> "api" :> "fs" :> "commands" :> "list" :> Get '[JSON] [FilePath]
 
 treePaths :: Tree a -> [[a]]
 treePaths (TR.Node x []) = [[x]]
@@ -45,24 +45,24 @@ pathsTreeToPaths tr = map mapFn (treePaths tr)
   where
     mapFn pathChunks = intercalate "/" (["."] <> pathChunks)
 
-fsToPathsTree :: TR.Tree FsNode -> TR.Tree FilePath
+fsToPathsTree :: TR.Tree Node -> TR.Tree FilePath
 fsToPathsTree = fmap fn where fn fsNode = name fsNode
 
-fsTreeToList :: TR.Tree FsNode -> [FilePath]
+fsTreeToList :: TR.Tree Node -> [FilePath]
 fsTreeToList = pathsTreeToPaths . fsToPathsTree
 
-filterExecutables :: Fs -> Fs
-filterExecutables = TR.foldTree foldFn
+filterCommands :: Fs -> Fs
+filterCommands = TR.foldTree foldFn
   where
-    foldFn :: FsNode -> [Fs] -> Fs
-    foldFn File {name, isExecutable} subForest =
-      if isExecutable
-        then TR.Node {rootLabel = File {name, isExecutable}, subForest}
-        else TR.Node {rootLabel = File {name, isExecutable}, subForest = []}
+    foldFn :: Node -> [Fs] -> Fs
+    foldFn File {name, isCommand} subForest =
+      if isCommand
+        then TR.Node {rootLabel = File {name, isCommand}, subForest}
+        else TR.Node {rootLabel = File {name, isCommand}, subForest = []}
     foldFn Dir {name} subForest = TR.Node {rootLabel = Dir {name}, subForest = filter sfn subForest}
       where
-        sfn TR.Node {rootLabel = File {isExecutable}} = isExecutable
-        sfn TR.Node {rootLabel = Dir {}, subForest} = not (all (null . filterExecutables) subForest)
+        sfn TR.Node {rootLabel = File {isCommand}} = isCommand
+        sfn TR.Node {rootLabel = Dir {}, subForest} = not (all (null . filterCommands) subForest)
 
 listDirectoryRecursive :: FilePath -> [FilePath] -> IO (Maybe Fs)
 listDirectoryRecursive filePath excludeFiles = do
@@ -83,37 +83,44 @@ listDirectoryRecursive filePath excludeFiles = do
           let dir = TR.Node {rootLabel = Dir {name}, subForest}
           pure $ Just dir
         else do
-          p <- SD.getPermissions filePath
-          let isExecutable = SD.executable p
-          let file = TR.Node {rootLabel = File {name, isExecutable}, subForest = []}
+          permissions <- SD.getPermissions filePath
+          let isCommand = SD.executable permissions
+          let file = TR.Node {rootLabel = File {name, isCommand}, subForest = []}
           pure $ Just file
 
-fsTree config = do
+commandsList :: Config.Config -> IO (Maybe [FilePath])
+commandsList config = do
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  case dir of
+    Just _ -> pure (Just $ fsTreeToList $ filterCommands $ fromJust dir)
+    _ -> pure Nothing
+
+treeHandler config = do
   dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
-fsList config = do
+listHandler config = do
   dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
     Just _ -> pure $ fsTreeToList $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
-fsExecutablesTree config = do
+commandsTreeHandler config = do
   dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
   case dir of
-    Just _ -> pure $ filterExecutables $ fromJust dir
+    Just _ -> pure $ filterCommands $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
-fsExecutablesList config = do
-  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
-  case dir of
-    Just _ -> pure $ fsTreeToList $ filterExecutables $ fromJust dir
+commandsListHandler config = do
+  list <- liftIO $ commandsList config
+  case list of
+    Just _ -> pure $ fromJust list
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
 getFsHandler config =
-  fsTree config
-    :<|> fsList config
-    :<|> fsExecutablesTree config
-    :<|> fsExecutablesList config
+  treeHandler config
+    :<|> listHandler config
+    :<|> commandsTreeHandler config
+    :<|> commandsListHandler config
