@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Exec (Exec, ExecApi, postExecHandler) where
@@ -29,26 +28,25 @@ instance ToJSON Exec
 
 type ExecApi = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Exec)
 
-postExecHandler config command = do
-  liftIO $ putStrLn $ "Requested command: " <> command
+postExecHandler config executableRelPath = do
+  liftIO $ putStrLn $ "Requested command: " <> executableRelPath
 
-  if FP.isAbsolute command
+  if FP.isAbsolute executableRelPath
     then do
-      throwError err400 {errBody = LChar8.pack $ "Command is and absolute path, but relative to sandbox root should be provided: " <> command}
+      throwError err400 {errBody = LChar8.pack $ "Executable path is and absolute path, but relative to sandbox root should be provided: " <> executableRelPath}
     else do
-      let commandPath = FP.combine (Config.sandboxRoot config) command
-      isCommandFound <- liftIO $ SD.doesFileExist commandPath
+      let executableRelPathAbsPath = FP.combine (Config.sandboxRoot config) executableRelPath
+      isExecutableFound <- liftIO $ SD.doesFileExist executableRelPathAbsPath
 
-      permissions <- liftIO $ SD.getPermissions commandPath
-      let isExecutable = SD.executable permissions
-      isDirectory <- liftIO $ SD.doesDirectoryExist commandPath
-      let isExecutableFile = not isDirectory && isExecutable
+      permissions <- liftIO $ SD.getPermissions executableRelPathAbsPath
+      isDirectory <- liftIO $ SD.doesDirectoryExist executableRelPathAbsPath
+      let isExecutable = not isDirectory && SD.executable permissions
 
-      if not isCommandFound || not isExecutableFile
+      if not isExecutableFound || not isExecutable
         then do
-          throwError err400 {errBody = LChar8.pack $ "Can't process the command request. Command file may not exist or be not executable." <> " Path: " <> commandPath <> " Is executable file: " <> show isExecutableFile}
+          throwError err400 {errBody = LChar8.pack $ "Can't process the command request. Command file may not exist or be not executableRelPath." <> " Path: " <> executableRelPathAbsPath <> " Is executableRelPath file: " <> show isExecutable}
         else do
-          liftIO $ putStrLn $ "Executing: " <> commandPath
+          liftIO $ putStrLn $ "Executing: " <> executableRelPathAbsPath
 
           (gottyPort, _) <- liftIO openFreePort
 
@@ -65,7 +63,7 @@ postExecHandler config command = do
                   "9",
                   "--term",
                   "xterm",
-                  commandPath
+                  executableRelPathAbsPath
                 ]
 
           (_, _, _, p) <- liftIO $ P.createProcess $ P.proc "gotty" gottyArgs
