@@ -47,6 +47,7 @@ executable api
     , process
     , raw-strings-qq
     , servant-server      >=0.18.3
+    , show-prettyprint
     , text
     , universe-base
     , wai

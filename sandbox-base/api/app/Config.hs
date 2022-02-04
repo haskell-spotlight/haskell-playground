@@ -6,6 +6,7 @@
 module Config (Config, getConfig, excludeFiles, sandboxRoot, port, origin, publicUrl, nginxConfigPath) where
 
 import qualified Data.Text as T
+import qualified System.Directory as FP
 import System.Environment (getEnv)
 
 data Config = Config
@@ -16,14 +17,17 @@ data Config = Config
     excludeFiles :: [FilePath],
     nginxConfigPath :: FilePath,
     nginxPort :: Int
-  }
+  } deriving (Eq, Show)
 
 getConfig :: IO Config
 getConfig = do
   port <- getEnv "HSPG_PORT"
   origin <- getEnv "HSPG_ORIGIN"
   publicUrl <- getEnv "HSPG_PUBLIC_URL"
-  sandboxRoot <- getEnv "HSPG_SANDBOX_ROOT"
+
+  _sandboxRoot <- getEnv "HSPG_SANDBOX_ROOT" >>= FP.canonicalizePath
+  let sandboxRoot = _sandboxRoot
+
   nginxConfigPath <- getEnv "HSPG_NGINX_CONFIG_PATH"
 
   _nginxPort <- getEnv "HSPG_NGINX_PORT"

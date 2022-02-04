@@ -2,24 +2,28 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Commands (Command, Api, postCommandsHandler) where
+module Commands (Command, Api, initCommand, initAllCommands) where
 
 import qualified Config
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Aeson (ToJSON)
-import qualified Data.ByteString.Lazy.Char8 as LChar8
+import Data.Maybe (catMaybes, fromJust)
 import qualified Data.Text as T
+import qualified Fs
 import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode)
 import Network.Wai.Handler.Warp (openFreePort)
+import ReverseProxy (Upstream)
+import qualified ReverseProxy
 import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 import qualified System.Process as P
+import Text.Show.Prettyprint as Pretty
 
-data Command = Command {webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
+data Command = Command {name :: T.Text, webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
   deriving (Eq, Show, Generic)
 
 instance ToJSON ExitCode
@@ -28,27 +32,49 @@ instance ToJSON Command
 
 type Api = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Command)
 
-postCommandsHandler config commandRelPath = do
-  liftIO $ putStrLn $ "Requested command: " <> commandRelPath
+initAllCommands :: Config.Config -> IO ()
+initAllCommands config = do
+  putStrLn $ "Looking commands in: " <> Config.sandboxRoot config
+  _commands <- Fs.commandsList config
+  let commands = fromJust _commands
+  mapM_ (\command -> putStrLn $ "Found command: " <> command) commands
+
+  maybeCsUs <- mapM (initCommand config) commands
+  let csUs = Data.Maybe.catMaybes maybeCsUs
+  let (_, upstreams) = unzip csUs
+
+  ReverseProxy.run
+    ReverseProxy.Config
+      { publicUrl = Config.publicUrl config,
+        upstreams,
+        nginxConfigPath = Config.nginxConfigPath config
+      }
+  pure ()
+
+initCommand :: Config.Config -> String -> IO (Maybe (Command, Upstream))
+initCommand config commandRelPath = do
+  putStrLn $ "Requested command: " <> commandRelPath
 
   if FP.isAbsolute commandRelPath
     then do
-      throwError err400 {errBody = LChar8.pack $ "Command path is and absolute path, but relative to sandbox root should be provided: " <> commandRelPath}
+      putStrLn $ "Should be relative path: " <> commandRelPath
+      pure Nothing
     else do
-      let commandRelPathAbsPath = FP.combine (Config.sandboxRoot config) commandRelPath
-      isCommandFound <- liftIO $ SD.doesFileExist commandRelPathAbsPath
+      let commandAbsPath = FP.combine (Config.sandboxRoot config) commandRelPath
+      isCommandFound <- SD.doesFileExist commandAbsPath
 
-      permissions <- liftIO $ SD.getPermissions commandRelPathAbsPath
-      isDirectory <- liftIO $ SD.doesDirectoryExist commandRelPathAbsPath
+      permissions <- SD.getPermissions commandAbsPath
+      isDirectory <- SD.doesDirectoryExist commandAbsPath
       let isCommand = not isDirectory && SD.executable permissions
 
-      if isCommandFound && isCommand
+      if not (isCommandFound && isCommand)
         then do
-          throwError err400 {errBody = LChar8.pack $ "Can't process the command request. Command file may not exist or be not commandRelPath." <> " Path: " <> commandRelPathAbsPath <> " Is commandRelPath file: " <> show isCommand}
+          putStrLn $ "Command not found. Probably it's not executable. " <> commandRelPath
+          pure Nothing
         else do
-          liftIO $ putStrLn $ "Commandsuting: " <> commandRelPathAbsPath
+          putStrLn $ "Starting gotty web tty for command: " <> commandRelPath
 
-          (gottyPort, _) <- liftIO openFreePort
+          (gottyPort, _) <- openFreePort
 
           let gottyArgs =
                 [ "--permit-write",
@@ -63,18 +89,25 @@ postCommandsHandler config commandRelPath = do
                   "9",
                   "--term",
                   "xterm",
-                  commandRelPathAbsPath
+                  commandAbsPath
                 ]
 
-          (_, _, _, p) <- liftIO $ P.createProcess $ P.proc "gotty" gottyArgs
-          pid <- liftIO $ P.getPid p
-          exitCode <- liftIO $ P.getProcessExitCode p
+          (_, _, _, p) <- P.createProcess $ P.proc "gotty" gottyArgs
+          pid <- P.getPid p
+          exitCode <- P.getProcessExitCode p
 
-          let exec =
+          let command =
                 Command
-                  { webTerminalUrl = "abc",
+                  { name = T.pack commandRelPath,
+                    webTerminalUrl = Config.publicUrl config <> "/commands/" <> T.pack commandRelPath,
                     pid = T.pack $ show pid, -- XXX there should be a better way to encode pid. Please fix it if you know how.
                     exitCode = exitCode
                   }
 
-          pure $ Just exec
+          let upstream =
+                ReverseProxy.Upstream
+                  { name = T.pack commandRelPath,
+                    addr = T.pack $ "127.0.0.1:" <> show gottyPort
+                  }
+
+          pure $ Just (command, upstream)

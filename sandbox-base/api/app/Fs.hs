@@ -43,7 +43,7 @@ treePaths (TR.Node x children) = map (x :) (p : ps)
 pathsTreeToPaths :: TR.Tree FilePath -> [FilePath]
 pathsTreeToPaths tr = map mapFn (treePaths tr)
   where
-    mapFn pathChunks = intercalate "/" (["."] <> pathChunks)
+    mapFn pathChunks = intercalate "/" pathChunks
 
 fsToPathsTree :: TR.Tree Node -> TR.Tree FilePath
 fsToPathsTree = fmap fn where fn fsNode = name fsNode
@@ -64,20 +64,20 @@ filterCommands = TR.foldTree foldFn
         sfn TR.Node {rootLabel = File {isCommand}} = isCommand
         sfn TR.Node {rootLabel = Dir {}, subForest} = not (all (null . filterCommands) subForest)
 
-listDirectoryRecursive :: FilePath -> [FilePath] -> IO (Maybe Fs)
-listDirectoryRecursive filePath excludeFiles = do
+listDirectoryRecursive :: FilePath -> [FilePath] -> Bool -> IO (Maybe Fs)
+listDirectoryRecursive filePath excludeFiles isRoot = do
   let isExcluded = any (\toExclude -> toExclude == FP.takeFileName filePath) excludeFiles
   isExists <- SD.doesPathExist filePath
 
   if isExcluded || not isExists
     then pure Nothing
     else do
-      let name = FP.takeFileName filePath
+      let name = if isRoot then "." else FP.takeFileName filePath
       isDir <- SD.doesDirectoryExist filePath
       if isDir
         then do
           files <- SD.listDirectory filePath
-          childrenM <- mapM (\c -> listDirectoryRecursive (FP.combine filePath c) excludeFiles) files
+          childrenM <- mapM (\c -> listDirectoryRecursive (FP.combine filePath c) excludeFiles False) files
           let subForest = Data.Maybe.catMaybes childrenM
 
           let dir = TR.Node {rootLabel = Dir {name}, subForest}
@@ -90,25 +90,25 @@ listDirectoryRecursive filePath excludeFiles = do
 
 commandsList :: Config.Config -> IO (Maybe [FilePath])
 commandsList config = do
-  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config) True
   case dir of
     Just _ -> pure (Just $ fsTreeToList $ filterCommands $ fromJust dir)
     _ -> pure Nothing
 
 treeHandler config = do
-  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config) True
   case dir of
     Just _ -> pure $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
 listHandler config = do
-  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config) True
   case dir of
     Just _ -> pure $ fsTreeToList $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}
 
 commandsTreeHandler config = do
-  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config)
+  dir <- liftIO $ listDirectoryRecursive (Config.sandboxRoot config) (Config.excludeFiles config) True
   case dir of
     Just _ -> pure $ filterCommands $ fromJust dir
     _ -> throwError err500 {errBody = "Sandbox root directory not found"}

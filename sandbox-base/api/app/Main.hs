@@ -8,10 +8,9 @@
 
 module Main where
 
-import qualified Commands as Commands
+import Commands (initAllCommands)
 import qualified Config
-import Data.Maybe (fromJust)
-import qualified Data.Text as T
+import Data.Conduit.Process.Typed (ExitCode (ExitFailure))
 import qualified Fs
 import GitHash (tGitInfoCwd)
 import qualified GitHash as Git
@@ -22,14 +21,16 @@ import Network.Wai.Handler.Warp
     setPort,
   )
 import Network.Wai.Logger (withStdoutLogger)
-import qualified ReverseProxy as ReverseProxy
 import Servant
+import qualified System.Directory as SD
+import qualified System.Exit
+import qualified System.Exit as Exit
+import Text.Show.Prettyprint as Pretty
 
-type SandboxApi = Fs.Api :<|> Commands.Api
+type SandboxApi = Fs.Api
 
 sandboxApiServer :: Config.Config -> Server SandboxApi
-sandboxApiServer config =
-  Fs.getFsHandler config :<|> Commands.postCommandsHandler config
+sandboxApiServer = Fs.getFsHandler
 
 sandboxApi :: Proxy SandboxApi
 sandboxApi = Proxy
@@ -44,20 +45,34 @@ main = do
   putStrLn $ "Revision: " <> Git.giCommitDate gitInfo <> " " <> Git.giHash gitInfo
 
   config <- Config.getConfig
+  putStrLn $ Pretty.prettyShow config
 
-  commands <- Fs.commandsList config
-  let upstreams = map mapFn (fromJust commands)
-        where
-          mapFn commandPath = ReverseProxy.Upstream {name = T.pack commandPath, addr = "b"}
+  checkExecutablesInSystemPath
 
-  ReverseProxy.run
-    ReverseProxy.Config
-      { publicUrl = Config.publicUrl config,
-        upstreams,
-        nginxConfigPath = Config.nginxConfigPath config
-      }
+  initAllCommands config
 
   withStdoutLogger $ \logger -> do
     putStrLn $ "Listening port: " <> show (Config.port config)
     let settings = setPort (Config.port config) $ setLogger logger defaultSettings
     runSettings settings $ app config
+
+checkExecutablesInSystemPath :: IO ()
+checkExecutablesInSystemPath = do
+  let requiredExcutables = ["nginx", "gotty"]
+  putStrLn $ "Checking for required executables in system path: " <> Pretty.prettyShow requiredExcutables
+
+  foundExecutables <- mapM (\e -> do SD.findExecutables e) requiredExcutables
+  let ok = not (any null foundExecutables)
+
+  if ok
+    then do
+      pure ()
+    else do
+      putStrLn "Some executables where not found."
+      putStrLn "Required:"
+      putStrLn $ Pretty.prettyShow requiredExcutables
+      putStrLn "Found:"
+      putStrLn $ Pretty.prettyShow foundExecutables
+
+      _ <- Exit.exitWith $ ExitFailure 1
+      pure ()

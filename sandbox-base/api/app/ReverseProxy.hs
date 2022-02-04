@@ -12,17 +12,18 @@ import Text.RawString.QQ (r)
 data Upstream = Upstream
   { name :: T.Text,
     addr :: T.Text
-  }
+  } deriving (Eq, Show)
 
 data Config = Config
   { publicUrl :: T.Text,
     upstreams :: [Upstream],
     nginxConfigPath :: FilePath
-  }
+  } deriving (Eq, Show)
 
 run :: Config -> IO ()
 run config = do
   let nginxConfigStr = renderNginxConfig config
+  putStrLn $ "Generated Nginx config: " <> T.unpack nginxConfigStr
   SD.writeFile (nginxConfigPath config) (encodeUtf8 nginxConfigStr)
 
   (_, stdout, stderr, configTest) <- P.createProcess $ P.proc "nginx" ["-c", nginxConfigPath config, "-t"]
