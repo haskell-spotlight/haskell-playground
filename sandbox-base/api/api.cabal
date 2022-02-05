@@ -31,25 +31,25 @@ executable api
   default-extensions: OverloadedStrings
 
   -- Modules included in this command, other than Main.
-  other-modules: Config, Commands, Fs, ReverseProxy
+  other-modules: Config, ReverseProxy, Sandbox.FileSystem, Sandbox.Commands
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
   build-depends:
     , aeson
     , base                ^>=4.14.0
+    , base32
     , bytestring
-    , conduit-extra
     , containers
     , directory           >=1.3
     , filepath
-    , githash
     , process
     , raw-strings-qq
-    , servant-server      >=0.18.3
+    , servant-server      >=0.19
     , show-prettyprint
     , text
     , universe-base
+    , uri-encode
     , wai
     , wai-logger
     , warp

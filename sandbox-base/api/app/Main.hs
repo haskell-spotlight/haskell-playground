@@ -1,19 +1,10 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
-import Commands (initAllCommands)
 import qualified Config
-import Data.Conduit.Process.Typed (ExitCode (ExitFailure))
-import qualified Fs
-import GitHash (tGitInfoCwd)
-import qualified GitHash as Git
 import Network.Wai.Handler.Warp
   ( defaultSettings,
     runSettings,
@@ -21,16 +12,18 @@ import Network.Wai.Handler.Warp
     setPort,
   )
 import Network.Wai.Logger (withStdoutLogger)
+import Sandbox.Commands (initAllCommands)
+import qualified Sandbox.FileSystem as Fs
 import Servant
 import qualified System.Directory as SD
-import qualified System.Exit
+import System.Exit (ExitCode (ExitFailure))
 import qualified System.Exit as Exit
-import Text.Show.Prettyprint as Pretty
+import Text.Show.Prettyprint (prettyShow)
 
 type SandboxApi = Fs.Api
 
 sandboxApiServer :: Config.Config -> Server SandboxApi
-sandboxApiServer = Fs.getFsHandler
+sandboxApiServer = Fs.api
 
 sandboxApi :: Proxy SandboxApi
 sandboxApi = Proxy
@@ -40,28 +33,27 @@ app config = serve sandboxApi $ sandboxApiServer config
 
 main :: IO ()
 main = do
-  let gitInfo = $$tGitInfoCwd
   putStrLn "Haskell Playground Sandbox"
-  putStrLn $ "Revision: " <> Git.giCommitDate gitInfo <> " " <> Git.giHash gitInfo
+  putStrLn "Revision: TODO"
 
   config <- Config.getConfig
-  putStrLn $ Pretty.prettyShow config
+  putStrLn $ prettyShow config
 
-  checkExecutablesInSystemPath
+  checkSystemRequirements
 
   initAllCommands config
 
   withStdoutLogger $ \logger -> do
-    putStrLn $ "Listening port: " <> show (Config.port config)
+    putStrLn $ "Serving API at: " <> show (Config.port config)
     let settings = setPort (Config.port config) $ setLogger logger defaultSettings
     runSettings settings $ app config
 
-checkExecutablesInSystemPath :: IO ()
-checkExecutablesInSystemPath = do
-  let requiredExcutables = ["nginx", "gotty"]
-  putStrLn $ "Checking for required executables in system path: " <> Pretty.prettyShow requiredExcutables
+checkSystemRequirements :: IO ()
+checkSystemRequirements = do
+  let requiredExecutables = ["nginx", "gotty"]
+  putStrLn $ "Checking for required executables in system path: " <> prettyShow requiredExecutables
 
-  foundExecutables <- mapM (\e -> do SD.findExecutables e) requiredExcutables
+  foundExecutables <- mapM SD.findExecutables requiredExecutables
   let ok = not (any null foundExecutables)
 
   if ok
@@ -69,10 +61,10 @@ checkExecutablesInSystemPath = do
       pure ()
     else do
       putStrLn "Some executables where not found."
-      putStrLn "Required:"
-      putStrLn $ Pretty.prettyShow requiredExcutables
-      putStrLn "Found:"
-      putStrLn $ Pretty.prettyShow foundExecutables
+      putStrLn "Executables required:"
+      putStrLn $ prettyShow requiredExecutables
+      putStrLn "Executables found:"
+      putStrLn $ prettyShow foundExecutables
 
       _ <- Exit.exitWith $ ExitFailure 1
       pure ()

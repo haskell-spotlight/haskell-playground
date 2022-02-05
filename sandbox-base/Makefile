@@ -2,7 +2,7 @@
 
 .PHONY: dev
 dev: ## Run container for development
-	docker run -it -p 8080:8080 -e HSPG_ORIGIN="localhost:8080" -e HSPG_PUBLIC_URL="http://localhost:8080" visortelle/haskell-playground-sandbox-base:main
+	./dev.sh
 
 .PHONY: build
 build: ## Build docker image

@@ -5,23 +5,25 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Commands (Command, Api, initCommand, initAllCommands) where
+module Sandbox.Commands (Command, Api, initCommand, initAllCommands) where
 
 import qualified Config
 import Data.Aeson (ToJSON)
-import Data.Maybe (catMaybes, fromJust)
+import Data.Maybe (catMaybes, fromJust, isJust)
+import qualified Data.String as S
 import qualified Data.Text as T
-import qualified Fs
+import Data.Text.Encoding.Base32 (encodeBase32Unpadded)
 import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode)
 import Network.Wai.Handler.Warp (openFreePort)
 import ReverseProxy (Upstream)
 import qualified ReverseProxy
+import qualified Sandbox.FileSystem as Fs
 import Servant
+import qualified System.Directory as FP
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 import qualified System.Process as P
-import Text.Show.Prettyprint as Pretty
 
 data Command = Command {name :: T.Text, webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
   deriving (Eq, Show, Generic)
@@ -35,21 +37,27 @@ type Api = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe 
 initAllCommands :: Config.Config -> IO ()
 initAllCommands config = do
   putStrLn $ "Looking commands in: " <> Config.sandboxRoot config
-  _commands <- Fs.commandsList config
-  let commands = fromJust _commands
-  mapM_ (\command -> putStrLn $ "Found command: " <> command) commands
+  fs <- Fs.readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
 
-  maybeCsUs <- mapM (initCommand config) commands
-  let csUs = Data.Maybe.catMaybes maybeCsUs
-  let (_, upstreams) = unzip csUs
+  if isJust fs
+    then do
+      let commands = Fs.treeToList $ Fs.filterByFileKind Fs.CommandFile $ fromJust fs
+      mapM_ (\command -> putStrLn $ "Found command: " <> command) commands
 
-  ReverseProxy.run
-    ReverseProxy.Config
-      { publicUrl = Config.publicUrl config,
-        upstreams,
-        nginxConfigPath = Config.nginxConfigPath config
-      }
-  pure ()
+      maybeCsUs <- mapM (initCommand config) commands
+      let (_, upstreams) = unzip $ Data.Maybe.catMaybes maybeCsUs
+
+      ReverseProxy.run
+        ReverseProxy.Config
+          { publicUrl = Config.publicUrl config,
+            upstreams,
+            nginxConfigPath = Config.nginxConfigPath config,
+            nginxPort = Config.nginxPort config
+          }
+      pure ()
+    else do
+      putStrLn "No commands where found"
+      pure ()
 
 initCommand :: Config.Config -> String -> IO (Maybe (Command, Upstream))
 initCommand config commandRelPath = do
@@ -60,7 +68,7 @@ initCommand config commandRelPath = do
       putStrLn $ "Should be relative path: " <> commandRelPath
       pure Nothing
     else do
-      let commandAbsPath = FP.combine (Config.sandboxRoot config) commandRelPath
+      commandAbsPath <- FP.canonicalizePath $ FP.combine (Config.sandboxRoot config) commandRelPath
       isCommandFound <- SD.doesFileExist commandAbsPath
 
       permissions <- SD.getPermissions commandAbsPath
@@ -69,7 +77,7 @@ initCommand config commandRelPath = do
 
       if not (isCommandFound && isCommand)
         then do
-          putStrLn $ "Command not found. Probably it's not executable. " <> commandRelPath
+          putStrLn $ "Command not found: " <> commandRelPath
           pure Nothing
         else do
           putStrLn $ "Starting gotty web tty for command: " <> commandRelPath
@@ -92,22 +100,24 @@ initCommand config commandRelPath = do
                   commandAbsPath
                 ]
 
+          putStrLn $ "Creating new process: gotty " <> S.unwords gottyArgs
           (_, _, _, p) <- P.createProcess $ P.proc "gotty" gottyArgs
           pid <- P.getPid p
           exitCode <- P.getProcessExitCode p
 
+          let commandName = T.toLower $ encodeBase32Unpadded $ T.pack commandRelPath
           let command =
                 Command
-                  { name = T.pack commandRelPath,
-                    webTerminalUrl = Config.publicUrl config <> "/commands/" <> T.pack commandRelPath,
+                  { name = commandName,
+                    webTerminalUrl = Config.publicUrl config <> "/commands/" <> commandName,
                     pid = T.pack $ show pid, -- XXX there should be a better way to encode pid. Please fix it if you know how.
-                    exitCode = exitCode
+                    exitCode
                   }
 
           let upstream =
                 ReverseProxy.Upstream
-                  { name = T.pack commandRelPath,
-                    addr = T.pack $ "127.0.0.1:" <> show gottyPort
+                  { name = commandName,
+                    addr = T.pack $ "0.0.0.0:" <> show gottyPort
                   }
 
           pure $ Just (command, upstream)

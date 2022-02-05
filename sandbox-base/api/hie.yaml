@@ -6,11 +6,11 @@ cradle:
     - path: "app/Config.hs"
       component: "api:exe:api"
 
-    - path: "app/Commands.hs"
-      component: "api:exe:api"
-
-    - path: "app/Fs.hs"
-      component: "api:exe:api"
-
     - path: "app/ReverseProxy.hs"
+      component: "api:exe:api"
+
+    - path: "app/Sandbox/FileSystem.hs"
+      component: "api:exe:api"
+
+    - path: "app/Sandbox/Commands.hs"
       component: "api:exe:api"

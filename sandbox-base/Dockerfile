@@ -1,5 +1,40 @@
-# Ubuntu Focal Fossa 20.04 linux/amd64
-FROM ubuntu@sha256:57df66b9fc9ce2947e434b4aa02dbe16f6685e20db0c170917d4a1962a5fe6a9
+# Sandbox API builder
+FROM ubuntu:20.04 as api-executable
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y curl software-properties-common build-essential libgmp-dev zlib1g-dev
+
+# Create haskeller user
+RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
+  && addgroup haskeller && adduser haskeller haskeller
+
+USER haskeller
+WORKDIR /home/haskeller/src
+
+RUN mkdir ~/bin
+ENV PATH="$PATH:/home/haskeller/bin:/home/haskeller/.ghcup/bin"
+
+RUN curl -L --output ~/bin/ghcup https://downloads.haskell.org/~ghcup/0.1.17.4/x86_64-linux-ghcup-0.1.17.4 \
+  && chmod 700 ~/bin/ghcup
+
+RUN ghcup install ghc 8.10.7 && ghcup set ghc 8.10.7
+RUN ghcup install cabal 3.6.2.0 && ghcup set cabal 3.6.2.0
+
+COPY --chown=haskeller:haskeller ./api/cabal.project.freeze .
+COPY --chown=haskeller:haskeller ./api/api.cabal .
+RUN cabal update && cabal build --only-dependencies
+
+COPY --chown=haskeller:haskeller ./api .
+RUN cabal install --installdir="/home/haskeller/bin/"
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+# Sandbox base image
+FROM ubuntu:20.04
 
 USER root
 
@@ -10,8 +45,8 @@ RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskelle
 ENV DEBIAN_FRONTEND=noninteractive
 ENV COLORTERM=truecolor
 RUN apt-get update && apt-get install -y \
-  software-properties-common build-essential libgmp-dev \
-  ruby python python3 python3-pip \
+  software-properties-common build-essential libgmp-dev zlib1g-dev \
+  ruby python3 python3-pip \
   git curl wget zsh gettext-base nginx zip unzip
 
 # Install NodeJS
@@ -29,10 +64,10 @@ WORKDIR "/home/haskeller"
 
 # Install oh-my-zsh for user's comfort
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+ENV SHELL=/bin/zsh
 
-#######################
-# EDITORS SETUP BEGIN #
-#######################
+# Configure editors
+## TODO - neovim and probably emacs
 
 USER root
 RUN apt-get install -y neovim nano micro
@@ -42,28 +77,17 @@ USER haskeller
 RUN curl https://raw.githubusercontent.com/scopatz/nanorc/ae1e6021886a0b4215e1ca8617c6d746b5a957ae/install.sh | sh \
   && echo "include $install_path/*.nanorc" >> ~/.nanorc
 
-## TODO - neovim and probably emacs
+ENV EDITOR=micro
 
-#####################
-# EDITORS SETUP END #
-#####################
-
-ENV SHELL=/bin/zsh
-
+# Install Haskell build tools
 RUN mkdir ~/bin
 ENV PATH="$PATH:/home/haskeller/bin:/home/haskeller/.ghcup/bin"
 
-# Install GHCup
 RUN curl -L --output ~/bin/ghcup https://downloads.haskell.org/~ghcup/0.1.17.4/x86_64-linux-ghcup-0.1.17.4 \
   && chmod 700 ~/bin/ghcup
 
-# Install GHC
 RUN ghcup install ghc 8.10.7 && ghcup set ghc 8.10.7
-
-# Install Stack
 RUN ghcup install stack 2.7.3 && ghcup set stack 2.7.3
-
-# Install Cabal
 RUN ghcup install cabal 3.6.2.0 && ghcup set cabal 3.6.2.0
 
 # Install Gotty to expose terminal to web
@@ -74,10 +98,15 @@ COPY ./.gotty /home/haskeller/.gotty
 
 WORKDIR /home/haskeller/sandbox
 ENV HSPG_SANDBOX_ROOT=/home/haskeller/sandbox
+ENV HSPG_NGINX_CONFIG_PATH=/etc/nginx/nginx.conf
 
-COPY ./template.nginx.conf /etc/nginx/template.nginx.conf
-COPY ./entrypoint.sh /home/haskeller/
+# Copy sandbox base api executable
+COPY --from=api-executable --chown=haskeller:haskeller /home/haskeller/bin/api /home/haskeller/bin/api
 
+ENV HSPG_PORT=8080
 EXPOSE 8080
 
-ENTRYPOINT [ "/home/haskeller/entrypoint.sh" ]
+ENV HSPG_NGINX_PORT=8090
+EXPOSE 8090
+
+ENTRYPOINT [ "api" ]
