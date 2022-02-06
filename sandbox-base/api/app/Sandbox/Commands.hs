@@ -5,123 +5,141 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sandbox.Commands (Command, Api, initCommand, initAllCommands) where
+module Sandbox.Commands (Command, Api, initCommands) where
 
 import qualified Config
 import Data.Aeson (ToJSON)
-import Data.Maybe (catMaybes, fromJust, isJust)
+import Data.Maybe (catMaybes)
 import qualified Data.String as S
 import qualified Data.Text as T
 import Data.Text.Encoding.Base32 (encodeBase32Unpadded)
 import GHC.Generics (Generic)
-import GHC.IO.Exception (ExitCode (ExitSuccess))
-import Network.Wai.Handler.Warp (openFreePort)
+import GHC.IO.Exception (ExitCode)
+import Network.Socket.Free (getFreePort)
 import ReverseProxy (Upstream)
 import qualified ReverseProxy
 import qualified Sandbox.FileSystem as Fs
 import Servant
 import qualified System.Directory as FP
-import qualified System.Directory as SD
 import qualified System.FilePath as FP
 import qualified System.Process as P
-import Network.Socket.Free (getFreePort)
 
-data Command = Command {name :: T.Text, webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
+data CheckCommandRun = CheckCommandRun
+  { id :: T.Text,
+    startedAt :: Int,
+    finishedAt :: Int,
+    logsUrl :: T.Text,
+    exitCode :: ExitCode
+  }
+  deriving (Eq, Show, Generic)
+
+instance ToJSON CheckCommandRun
+
+data Command
+  = TermCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text}
+  | CheckCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text, runs :: [CheckCommandRun]}
   deriving (Eq, Show, Generic)
 
 instance ToJSON ExitCode
 
 instance ToJSON Command
 
-type Api = "api" :> "exec" :> Capture "command" FilePath :> Post '[JSON] (Maybe Command)
+type Api = "api" :> "commands" :> Get '[JSON] [Command]
 
-initAllCommands :: Config.Config -> IO ()
-initAllCommands config = do
-  putStrLn $ "Looking commands in: " <> Config.sandboxRoot config
+initCommands :: Config.Config -> IO [Command]
+initCommands config = do
+  let sandboxRoot = Config.sandboxRoot config
+  putStrLn $ "Looking commands in: " <> sandboxRoot
+
   fs <- Fs.readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
+  case fs of
+    Just fs -> _initCommands fs config
+    Nothing -> do
+      putStrLn $ "Unable to find sandbox root " <> sandboxRoot
+      pure []
 
-  if isJust fs
-    then do
-      let commands = Fs.treeToList $ Fs.filterByFileKind Fs.CommandFile $ fromJust fs
-      mapM_ (\command -> putStrLn $ "Found command: " <> command) commands
+_initCommands :: Fs.Fs -> Config.Config -> IO [Command]
+_initCommands fs config = do
+  let termCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.TermFile fs
+  let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.CheckFile fs
 
-      maybeCsUs <- mapM (initCommand config) commands
-      let (_, upstreams) = unzip $ Data.Maybe.catMaybes maybeCsUs
+  let termCommands = map (\file -> mkCommand file Fs.TermFile config) termCommandFiles
+  let checkCommands = map (\file -> mkCommand file Fs.CheckFile config) checkCommandFiles
 
-      ReverseProxy.run
-        ReverseProxy.Config
-          { publicUrl = Config.publicUrl config,
-            upstreams,
-            nginxConfigPath = Config.nginxConfigPath config,
-            nginxPort = Config.nginxPort config
-          }
-      pure ()
-    else do
-      putStrLn "No commands where found"
-      pure ()
+  let commands = catMaybes $ termCommands <> checkCommands
 
-initCommand :: Config.Config -> String -> IO (Maybe (Command, Upstream))
-initCommand config commandRelPath = do
-  putStrLn $ "Requested command: " <> commandRelPath
+  upstreams <- mapM (initCommand config) commands
 
-  if FP.isAbsolute commandRelPath
-    then do
-      putStrLn $ "Should be relative path: " <> commandRelPath
-      pure Nothing
-    else do
-      commandAbsPath <- FP.canonicalizePath $ FP.combine (Config.sandboxRoot config) commandRelPath
-      isCommandFound <- SD.doesFileExist commandAbsPath
+  ReverseProxy.run
+    ReverseProxy.Config
+      { publicUrl = Config.publicUrl config,
+        upstreams,
+        nginxConfigPath = Config.nginxConfigPath config,
+        nginxPort = Config.nginxPort config
+      }
+  pure commands
 
-      permissions <- SD.getPermissions commandAbsPath
-      isDirectory <- SD.doesDirectoryExist commandAbsPath
-      let isCommand = not isDirectory && SD.executable permissions
+initCommand :: Config.Config -> Command -> IO Upstream
+initCommand config command = do
+  let commandRelPath = relPath command
+  putStrLn $ "Initializing command. Id: " <> T.unpack (commandId command) <> " Path: " <> commandRelPath
 
-      if not (isCommandFound && isCommand)
-        then do
-          putStrLn $ "Command not found: " <> commandRelPath
-          pure Nothing
-        else do
-          putStrLn $ "Starting gotty web tty for command: " <> commandRelPath
+  commandAbsPath <- FP.canonicalizePath $ FP.combine (Config.sandboxRoot config) commandRelPath
+  gottyPort <- runGotty (T.unpack (commandId command)) commandAbsPath (T.unpack $ Config.origin config)
 
-          gottyPort <- getFreePort
+  pure
+    ReverseProxy.Upstream
+      { name = commandId command,
+        addr = T.pack $ "0.0.0.0:" <> show gottyPort
+      }
 
-          let gottyArgs =
-                [
-                  -- "--title-format",
-                  -- "Haskell Playground: " <> commandRelPath,
-                  "--permit-write",
-                  "--reconnect",
-                  "--reconnect-time",
-                  "600",
-                  "--ws-origin",
-                  T.unpack $ Config.origin config,
-                  "--close-signal",
-                  "9",
-                  "--term",
-                  "xterm",
-                  commandAbsPath
-                ]
+-- Gotty allows to share any terminal command as a web widget
+-- https://github.com/sorenisanerd/gotty
+runGotty :: String -> FilePath -> String -> IO Int
+runGotty commandName commandAbsPath origin = do
+  putStrLn $ "Starting gotty web tty for command: " <> commandName
 
-          let gottyCommand = "gotty " <> S.unwords gottyArgs
-          putStrLn $ "Creating new process: " <> gottyCommand
-          (_, _, _, p) <- P.createProcess $ P.proc "/usr/bin/dumb-init" (["--"] <> ["bash"] <> ["-c"] <> ["set -e; export GOTTY_PORT=" <> show gottyPort <> " && gotty " <> S.unwords gottyArgs])
+  gottyPort <- getFreePort
 
-          pid <- P.getPid p
-          exitCode <- P.getProcessExitCode p
+  let gottyArgs =
+        [ "--title-format",
+          "Haskell Playground: " <> commandName,
+          "--permit-write",
+          "--reconnect",
+          "--reconnect-time",
+          "600",
+          "--ws-origin",
+          origin,
+          "--close-signal",
+          "9",
+          "--term",
+          "xterm",
+          "bash",
+          commandAbsPath
+        ]
 
-          let commandName = T.toLower $ encodeBase32Unpadded $ T.pack commandRelPath
-          let command =
-                Command
-                  { name = commandName,
-                    webTerminalUrl = Config.publicUrl config <> "/commands/" <> commandName,
-                    pid = T.pack $ show pid, -- XXX there should be a better way to encode pid. Please fix it if you know how.
-                    exitCode
-                  }
+  -- dumb-init here is to avoid the Docker's PID 1 issue with zombie processes.
+  let cmd = "/usr/bin/dumb-init"
+  let cmdArgs = ["--"] <> ["bash"] <> ["-c"] <> ["set -ex; export GOTTY_PORT=" <> show gottyPort <> " && gotty " <> S.unwords (map (\arg -> "\"" <> arg <> "\"") gottyArgs)]
 
-          let upstream =
-                ReverseProxy.Upstream
-                  { name = commandName,
-                    addr = T.pack $ "0.0.0.0:" <> show gottyPort
-                  }
+  putStrLn $ "Creating new process. Cmd: " <> cmd <> "Cmd args:" <> unwords cmdArgs
+  _ <- P.createProcess $ P.proc cmd cmdArgs
 
-          pure $ Just (command, upstream)
+  pure gottyPort
+
+getTerminalUrl :: T.Text -> Config.Config -> T.Text
+getTerminalUrl commandId config = Config.publicUrl config <> "/commands/" <> commandId
+
+encodeCommandId :: FilePath -> T.Text
+encodeCommandId relPath = T.toLower $ encodeBase32Unpadded $ T.pack relPath
+
+mkCommand :: FilePath -> Fs.FileKind -> Config.Config -> Maybe Command
+mkCommand relPath Fs.TermFile config = Just $ TermCommand {commandId, relPath, terminalUrl}
+  where
+    commandId = encodeCommandId relPath
+    terminalUrl = getTerminalUrl commandId config
+mkCommand relPath Fs.CheckFile config = Just $ CheckCommand {commandId, relPath, terminalUrl, runs = []}
+  where
+    commandId = encodeCommandId relPath
+    terminalUrl = getTerminalUrl commandId config
+mkCommand _ _ _ = Nothing

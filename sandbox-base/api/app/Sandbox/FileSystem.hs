@@ -5,7 +5,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sandbox.FileSystem (Fs, Node, Api, FileKind (RegularFile, CommandFile), api, readAsTree, readAsList, treeToList, filterByFileKind) where
+module Sandbox.FileSystem (Fs, Node, Api, FileKind (TermFile, CheckFile, AnyFile), api, readAsTree, readAsList, treeToList, filterByFileKind) where
 
 import qualified Config
 import Control.Monad.IO.Class (liftIO)
@@ -21,21 +21,23 @@ import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data FileKind = RegularFile | CommandFile
+data FileKind = TermFile | CheckFile | AnyFile
   deriving (Eq, Show, Generic)
 
 instance ToJSON FileKind
 
 instance FromHttpApiData FileKind where
-  parseQueryParam "command" = Right CommandFile
-  parseQueryParam "regular" = Right RegularFile
-  parseQueryParam "" = Right RegularFile
+  parseQueryParam "term" = Right TermFile
+  parseQueryParam "check" = Right CheckFile
+  parseQueryParam "regular" = Right AnyFile
+  parseQueryParam "" = Right AnyFile
   parseQueryParam _ = Left "Wrong file kind provided"
 
 determineFileKind :: FilePath -> FileKind
 determineFileKind filePath
-  | FP.dropExtension (FP.takeExtensions filePath) == ".x" = CommandFile
-  | otherwise = RegularFile
+  | FP.dropExtension (FP.takeExtensions filePath) == ".term" = TermFile
+  | FP.dropExtension (FP.takeExtensions filePath) == ".check" = CheckFile
+  | otherwise = AnyFile
 
 data Node = File {name :: FilePath, kind :: FileKind} | Dir {name :: FilePath}
   deriving (Eq, Show, Generic)

@@ -2,7 +2,7 @@
 FROM ubuntu:20.04 as api-executable
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl software-properties-common build-essential libgmp-dev zlib1g-dev dumb-init
+RUN apt-get update && apt-get install -y curl software-properties-common build-essential libgmp-dev zlib1g-dev
 
 # Create haskeller user
 RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
@@ -46,7 +46,7 @@ WORKDIR /home/haskeller/sandbox
 ENV DEBIAN_FRONTEND=noninteractive
 ENV COLORTERM=truecolor
 RUN apt-get update && apt-get install -y \
-  software-properties-common build-essential libgmp-dev zlib1g-dev \
+  software-properties-common build-essential libgmp-dev zlib1g-dev dumb-init \
   ruby python3 python3-pip \
   git curl wget zsh gettext-base nginx zip unzip
 

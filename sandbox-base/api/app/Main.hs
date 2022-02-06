@@ -12,7 +12,7 @@ import Network.Wai.Handler.Warp
     setPort,
   )
 import Network.Wai.Logger (withStdoutLogger)
-import Sandbox.Commands (initAllCommands)
+import Sandbox.Commands (initCommands)
 import qualified Sandbox.FileSystem as Fs
 import Servant
 import qualified System.Directory as SD
@@ -41,7 +41,7 @@ main = do
 
   checkSystemRequirements
 
-  initAllCommands config
+  _ <- initCommands config
 
   withStdoutLogger $ \logger -> do
     putStrLn $ "Serving API at: " <> show (Config.port config)
