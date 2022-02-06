@@ -63,8 +63,8 @@ _initCommands fs config = do
   let termCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.TermFile fs
   let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.CheckFile fs
 
-  let termCommands = map (\file -> mkCommand file Fs.TermFile config) termCommandFiles
-  let checkCommands = map (\file -> mkCommand file Fs.CheckFile config) checkCommandFiles
+  let termCommands = map (mkCommand config Fs.TermFile) termCommandFiles
+  let checkCommands = map (mkCommand config Fs.CheckFile) checkCommandFiles
 
   let commands = catMaybes $ termCommands <> checkCommands
 
@@ -133,12 +133,12 @@ getTerminalUrl commandId config = Config.publicUrl config <> "/commands/" <> com
 encodeCommandId :: FilePath -> T.Text
 encodeCommandId relPath = T.toLower $ encodeBase32Unpadded $ T.pack relPath
 
-mkCommand :: FilePath -> Fs.FileKind -> Config.Config -> Maybe Command
-mkCommand relPath Fs.TermFile config = Just $ TermCommand {commandId, relPath, terminalUrl}
+mkCommand :: Config.Config -> Fs.FileKind -> FilePath -> Maybe Command
+mkCommand config Fs.TermFile relPath = Just $ TermCommand {commandId, relPath, terminalUrl}
   where
     commandId = encodeCommandId relPath
     terminalUrl = getTerminalUrl commandId config
-mkCommand relPath Fs.CheckFile config = Just $ CheckCommand {commandId, relPath, terminalUrl, runs = []}
+mkCommand config Fs.CheckFile relPath = Just $ CheckCommand {commandId, relPath, terminalUrl, runs = []}
   where
     commandId = encodeCommandId relPath
     terminalUrl = getTerminalUrl commandId config
