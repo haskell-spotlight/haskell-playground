@@ -40,14 +40,14 @@ run config = do
       putStrLn $ "Nginx config test failed: " <> show stdout <> show stderr
       exitWith $ ExitFailure 1
 
-renderRoute :: Upstream -> Config -> T.Text
-renderRoute upstream config = T.replace "${HSPG_PUBLIC_URL}" (publicUrl config) $ T.replace "${SUB_PATH}" (name upstream) template
+renderRoute :: Config -> Upstream -> T.Text
+renderRoute config upstream = T.replace "${HSPG_PUBLIC_URL}" (publicUrl config) $ T.replace "${UPSTREAM_NAME}" (name upstream) template
   where
     template :: T.Text
     template =
       [r|
-    location /${SUB_PATH}/ {
-      proxy_pass http://${SUB_PATH}/;
+    location /commands/${UPSTREAM_NAME}/ {
+      proxy_pass http://${UPSTREAM_NAME}/;
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection "Upgrade";
@@ -55,23 +55,23 @@ renderRoute upstream config = T.replace "${HSPG_PUBLIC_URL}" (publicUrl config) 
       proxy_pass_request_headers on;
       sub_filter_once off;
       sub_filter_types text/html;
-      sub_filter "href=\"./" "href=\"${HSPG_PUBLIC_URL}/${SUB_PATH}/";
-      sub_filter "src=\"./" "src=\"${HSPG_PUBLIC_URL}/${SUB_PATH}/";
-      sub_filter "href=\"manifest.json\"" "href=\"${HSPG_PUBLIC_URL}/${SUB_PATH}/manifest.json\"";
-      sub_filter "href=\"favicon.ico\"" "href=\"${HSPG_PUBLIC_URL}/${SUB_PATH}/favicon.ico\"";
-      sub_filter "href=\"icon.svg\"" "href=\"${HSPG_PUBLIC_URL}/${SUB_PATH}/icon.svg\"";
+      sub_filter "href=\"./" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/";
+      sub_filter "src=\"./" "src=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/";
+      sub_filter "href=\"manifest.json\"" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/manifest.json\"";
+      sub_filter "href=\"favicon.ico\"" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/favicon.ico\"";
+      sub_filter "href=\"icon.svg\"" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/icon.svg\"";
     }
   |]
 
 renderUpstream :: Upstream -> T.Text
-renderUpstream upstream = T.replace "${ADDR}" (addr upstream) $ T.replace "${NAME}" (name upstream) template
+renderUpstream upstream = T.replace "${UPSTREAM_ADDR}" (addr upstream) $ T.replace "${UPSTREAM_NAME}" (name upstream) template
   where
     template :: T.Text
     template =
       [r|
-  upstream ${NAME} {
+  upstream ${UPSTREAM_NAME} {
     least_conn;
-    server ${ADDR};
+    server ${UPSTREAM_ADDR};
   }
   |]
 
@@ -82,7 +82,7 @@ renderNginxConfig config =
       T.replace "${ROUTES}" routesStr template
   where
     upstreamsStr = T.intercalate "\n" $ map renderUpstream (upstreams config)
-    routesStr = T.intercalate "\n" $ map (\u -> renderRoute u config) (upstreams config)
+    routesStr = T.intercalate "\n" $ map (renderRoute config) (upstreams config)
 
     template :: T.Text
     template =
