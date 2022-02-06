@@ -2,7 +2,7 @@
 FROM ubuntu:20.04 as api-executable
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl software-properties-common build-essential libgmp-dev zlib1g-dev
+RUN apt-get update && apt-get install -y curl software-properties-common build-essential libgmp-dev zlib1g-dev dumb-init
 
 # Create haskeller user
 RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
@@ -41,6 +41,7 @@ USER root
 # Create haskeller user
 RUN useradd -rm -d /home/haskeller -s /bin/bash -g root -G sudo -u 1001 haskeller \
   && addgroup haskeller && adduser haskeller haskeller
+WORKDIR /home/haskeller/sandbox
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV COLORTERM=truecolor
@@ -88,7 +89,7 @@ RUN curl -L --output ~/bin/ghcup https://downloads.haskell.org/~ghcup/0.1.17.4/x
 
 RUN ghcup install ghc 8.10.7 && ghcup set ghc 8.10.7
 RUN ghcup install stack 2.7.3 && ghcup set stack 2.7.3
-RUN ghcup install cabal 3.6.2.0 && ghcup set cabal 3.6.2.0
+RUN ghcup install cabal 3.6.2.0 && ghcup set cabal 3.6.2.0 && cabal update
 
 # Install Gotty to expose terminal to web
 RUN curl -L --output /tmp/gotty.tar.gz https://github.com/haskell-spotlight/gotty/releases/download/latest/gotty_latest_linux_amd64.tar.gz \
@@ -96,7 +97,6 @@ RUN curl -L --output /tmp/gotty.tar.gz https://github.com/haskell-spotlight/gott
   && mv ./gotty ~/bin/
 COPY ./.gotty /home/haskeller/.gotty
 
-WORKDIR /home/haskeller/sandbox
 ENV HSPG_SANDBOX_ROOT=/home/haskeller/sandbox
 ENV HSPG_NGINX_CONFIG_PATH=/etc/nginx/nginx.conf
 
@@ -109,4 +109,6 @@ EXPOSE 8080
 ENV HSPG_NGINX_PORT=8090
 EXPOSE 8090
 
-ENTRYPOINT [ "api" ]
+ENV DUMB_INIT_SETSID=0
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["api"]

@@ -44,6 +44,7 @@ executable api
     , directory           >=1.3
     , filepath
     , process
+    , port-utils
     , raw-strings-qq
     , servant-server      >=0.19
     , show-prettyprint

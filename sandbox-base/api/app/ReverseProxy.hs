@@ -93,7 +93,8 @@ http {
   access_log /dev/stdout;
   error_log /dev/stdout;
 
-  include /usr/local/etc/nginx/mime.types;
+  # include /usr/local/etc/nginx/mime.types;
+  # include /etc/nginx/mime.types;
 
   map $http_upgrade $connection_upgrade {
     default upgrade;

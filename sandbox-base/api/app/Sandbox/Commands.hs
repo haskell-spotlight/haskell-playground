@@ -14,7 +14,7 @@ import qualified Data.String as S
 import qualified Data.Text as T
 import Data.Text.Encoding.Base32 (encodeBase32Unpadded)
 import GHC.Generics (Generic)
-import GHC.IO.Exception (ExitCode)
+import GHC.IO.Exception (ExitCode (ExitSuccess))
 import Network.Wai.Handler.Warp (openFreePort)
 import ReverseProxy (Upstream)
 import qualified ReverseProxy
@@ -24,6 +24,7 @@ import qualified System.Directory as FP
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 import qualified System.Process as P
+import Network.Socket.Free (getFreePort)
 
 data Command = Command {name :: T.Text, webTerminalUrl :: T.Text, pid :: T.Text, exitCode :: Maybe ExitCode}
   deriving (Eq, Show, Generic)
@@ -82,15 +83,16 @@ initCommand config commandRelPath = do
         else do
           putStrLn $ "Starting gotty web tty for command: " <> commandRelPath
 
-          (gottyPort, _) <- openFreePort
+          gottyPort <- getFreePort
 
           let gottyArgs =
-                [ "--permit-write",
+                [
+                  -- "--title-format",
+                  -- "Haskell Playground: " <> commandRelPath,
+                  "--permit-write",
                   "--reconnect",
                   "--reconnect-time",
                   "600",
-                  "--port",
-                  show gottyPort,
                   "--ws-origin",
                   T.unpack $ Config.origin config,
                   "--close-signal",
@@ -100,8 +102,10 @@ initCommand config commandRelPath = do
                   commandAbsPath
                 ]
 
-          putStrLn $ "Creating new process: gotty " <> S.unwords gottyArgs
-          (_, _, _, p) <- P.createProcess $ P.proc "gotty" gottyArgs
+          let gottyCommand = "gotty " <> S.unwords gottyArgs
+          putStrLn $ "Creating new process: " <> gottyCommand
+          (_, _, _, p) <- P.createProcess $ P.proc "/usr/bin/dumb-init" (["--"] <> ["bash"] <> ["-c"] <> ["set -e; export GOTTY_PORT=" <> show gottyPort <> " && gotty " <> S.unwords gottyArgs])
+
           pid <- P.getPid p
           exitCode <- P.getProcessExitCode p
 
