@@ -6,11 +6,9 @@ import * as s from './Widget.module.css';
 import React, { useState } from 'react';
 
 import Tabs, { Tab } from './Tabs';
-import Editor from './Editor';
 
 export type WidgetProps = {
-  sandboxUrl: string,
-  initialCode: string
+  serverUrl?: string,
 };
 
 export const Widget = (props: WidgetProps) => {
@@ -32,14 +30,18 @@ export const Widget = (props: WidgetProps) => {
       <Tabs activeTab={activeTab} tabs={tabs} onTabChange={setActiveTab} />
 
       <div className={s.tabs}>
-        <div className={`${s.tab} ${activeTab === 'editor' ? s.activeTab : ''}`}>
-          <Editor sandboxUrl={props.sandboxUrl}  />
-        </div>
-
         <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>
           <iframe
             className={s.terminal}
-            src={`http://${props.sandboxUrl}/repl`}
+            src={`http://${props.serverUrl}/repl`}
+            allow='autoplay'
+            frameBorder="0"
+          />
+        </div>
+        <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>
+          <iframe
+            className={s.terminal}
+            src={`http://${props.serverUrl}/repl`}
             allow='autoplay'
             frameBorder="0"
           />
@@ -48,7 +50,7 @@ export const Widget = (props: WidgetProps) => {
         <div className={`${s.tab} ${activeTab === 'shell' ? s.activeTab : ''}`}>
           <iframe
             className={s.terminal}
-            src={`http://${props.sandboxUrl}/shell`}
+            src={`http://${props.serverUrl}/shell`}
             allow='autoplay'
             frameBorder="0"
           />

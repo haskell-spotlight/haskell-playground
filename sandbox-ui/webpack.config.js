@@ -34,12 +34,16 @@ module.exports = () => {
     },
     devtool: !isProd ? "source-map" : false,
     devServer: !isProd
-      ? { contentBase: path.resolve(__dirname, "./dist"), port: 4242 }
+      ? {
+        static: [path.resolve(__dirname, "./dist")],
+        port: 4242,
+
+      }
       : undefined,
     plugins: [
       new HtmlWebpackPlugin({
-        title: "Haskell Playground",
-      })
+        template: "src/index.html",
+      }),
     ],
     module: {
       rules: [
@@ -79,6 +83,11 @@ module.exports = () => {
     output: {
       path: path.resolve(__dirname, "./dist"),
       filename: "[name].js",
+      library: {
+        name: "HSPG",
+        type: "umd",
+        umdNamedDefine: true,
+      }
     },
   };
 };

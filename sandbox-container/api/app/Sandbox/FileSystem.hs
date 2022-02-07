@@ -29,8 +29,7 @@ instance ToJSON FileKind
 instance FromHttpApiData FileKind where
   parseQueryParam "term" = Right TermFile
   parseQueryParam "check" = Right CheckFile
-  parseQueryParam "regular" = Right AnyFile
-  parseQueryParam "" = Right AnyFile
+  parseQueryParam "any" = Right AnyFile
   parseQueryParam _ = Left "Wrong file kind provided"
 
 determineFileKind :: FilePath -> FileKind
