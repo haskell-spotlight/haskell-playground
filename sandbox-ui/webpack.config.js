@@ -35,10 +35,12 @@ module.exports = () => {
     devtool: !isProd ? "source-map" : false,
     devServer: !isProd
       ? {
-        static: [path.resolve(__dirname, "./dist")],
-        port: 4242,
-
-      }
+          static: [path.resolve(__dirname, "./dist")],
+          port: 4242,
+          devMiddleware: {
+            writeToDisk: true,
+          }
+        }
       : undefined,
     plugins: [
       new HtmlWebpackPlugin({
@@ -87,7 +89,7 @@ module.exports = () => {
         name: "HSPG",
         type: "umd",
         umdNamedDefine: true,
-      }
+      },
     },
   };
 };

@@ -2,6 +2,7 @@
 
 .PHONY: dev
 dev: ## Run container for development
+	make build-skip-ui
 	./dev.sh
 
 .PHONY: build-skip-ui
