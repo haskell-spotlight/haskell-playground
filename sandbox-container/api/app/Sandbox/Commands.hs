@@ -5,7 +5,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sandbox.Commands (Command, Api, initCommands) where
+module Sandbox.Commands (Command, initCommands) where
 
 import qualified Config
 import Data.Aeson (ToJSON)
@@ -44,8 +44,6 @@ instance ToJSON ExitCode
 
 instance ToJSON Command
 
-type Api = "api" :> "commands" :> Get '[JSON] [Command]
-
 initCommands :: Config.Config -> IO [Command]
 initCommands config = do
   let sandboxRoot = Config.sandboxRoot config
@@ -74,6 +72,8 @@ _initCommands fs config = do
     ReverseProxy.Config
       { publicUrl = Config.publicUrl config,
         upstreams,
+        apiPort = Config.apiPort config,
+        uiDist = Config.uiDist config,
         nginxConfigPath = Config.nginxConfigPath config,
         nginxPort = Config.nginxPort config
       }

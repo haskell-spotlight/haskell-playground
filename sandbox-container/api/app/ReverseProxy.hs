@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module ReverseProxy (Config (Config), Upstream (Upstream, name, addr), publicUrl, upstreams, nginxConfigPath, nginxPort, run, renderNginxConfig) where
+module ReverseProxy (Config (Config), Upstream (Upstream, name, addr), publicUrl, apiPort, upstreams, uiDist, nginxConfigPath, nginxPort, run, renderNginxConfig) where
 
 import qualified Data.ByteString as SD
 import qualified Data.Text as T
@@ -16,10 +16,12 @@ data Upstream = Upstream
   deriving (Eq, Show)
 
 data Config = Config
-  { publicUrl :: T.Text,
-    upstreams :: [Upstream],
+  { apiPort :: Int,
     nginxConfigPath :: FilePath,
-    nginxPort :: Int
+    nginxPort :: Int,
+    publicUrl :: T.Text,
+    uiDist :: FilePath,
+    upstreams :: [Upstream]
   }
   deriving (Eq, Show)
 
@@ -79,7 +81,9 @@ renderNginxConfig :: Config -> T.Text
 renderNginxConfig config =
   T.replace "${PORT}" (T.pack $ show $ nginxPort config) $
     T.replace "${UPSTREAMS}" upstreamsStr $
-      T.replace "${ROUTES}" routesStr template
+      T.replace "${ROUTES}" routesStr $
+        T.replace "${UI_DIST}" (T.pack $ uiDist config) $
+          T.replace "${API_ADDR}" (T.pack $ "0.0.0.0:" <> show (apiPort config)) template
   where
     upstreamsStr = T.intercalate "\n" $ map renderUpstream (upstreams config)
     routesStr = T.intercalate "\n" $ map (renderRoute config) (upstreams config)
@@ -93,12 +97,14 @@ http {
   access_log /dev/stdout;
   error_log /dev/stdout;
 
-  # include /usr/local/etc/nginx/mime.types;
-  # include /etc/nginx/mime.types;
-
   map $http_upgrade $connection_upgrade {
     default upgrade;
     '' close;
+  }
+
+  upstream api {
+    least_conn;
+    server ${API_ADDR};
   }
 
   ${UPSTREAMS}
@@ -107,6 +113,27 @@ http {
     listen ${PORT};
 
     ${ROUTES}
+
+    location /api/ {
+      proxy_pass http://api/;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Host $host;
+      proxy_pass_request_headers on;
+    }
+
+    location /ui/ {
+      sendfile on;
+      sendfile_max_chunk 5m;
+      tcp_nopush on;
+      tcp_nodelay on;
+
+      alias ${UI_DIST}/;
+    }
+
+    location / {
+      return 301 $scheme://$http_host/ui;
+    }
   }
 }
 |]

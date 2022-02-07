@@ -47,8 +47,8 @@ instance ToJSON Node
 type Fs = TR.Tree Node
 
 type Api =
-  "api" :> "fs" :> "tree" :> QueryParam "fileKind" FileKind :> Get '[JSON] Fs
-    :<|> "api" :> "fs" :> "list" :> QueryParam "fileKind" FileKind :> Get '[JSON] [FilePath]
+  "fs" :> "tree" :> QueryParam "fileKind" FileKind :> Get '[JSON] Fs
+    :<|> "fs" :> "list" :> QueryParam "fileKind" FileKind :> Get '[JSON] [FilePath]
 
 treePaths :: Tree a -> [[a]]
 treePaths (TR.Node x []) = [[x]]

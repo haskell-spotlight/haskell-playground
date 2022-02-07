@@ -8,9 +8,8 @@ dev: ## Start development.
 
 .PHONY: build
 build: ## Build.
-	cd ./widget && make build
-	cd ./sandbox-base && make build
-	./build-sandbox/build.sh base-sandbox
+	cd ./sandbox-container && make build
+	# ./sandbox-builder/build.sh base-sandbox
 
 .PHONY: help
 help:

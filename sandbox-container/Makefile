@@ -4,8 +4,14 @@
 dev: ## Run container for development
 	./dev.sh
 
+.PHONY: build-skip-ui
+build-skip-ui: ## Build docker image skipping building UI
+	docker build -t visortelle/haskell-playground-sandbox-base:main .
+
 .PHONY: build
 build: ## Build docker image
+	cd ../sandbox-ui && make build
+	cp -r ../sandbox-ui/dist/* ./ui/
 	docker build -t visortelle/haskell-playground-sandbox-base:main .
 
 .PHONY: publish

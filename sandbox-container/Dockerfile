@@ -103,8 +103,11 @@ ENV HSPG_NGINX_CONFIG_PATH=/etc/nginx/nginx.conf
 # Copy sandbox base api executable
 COPY --from=api-executable --chown=haskeller:haskeller /home/haskeller/bin/api /home/haskeller/bin/api
 
-ENV HSPG_PORT=8080
-EXPOSE 8080
+# Copy UI
+ENV HSPG_UI_DIST=/home/haskeller/ui
+COPY --chown=haskeller:haskeller ./ui /home/haskeller/ui
+
+ENV HSPG_API_PORT=8080
 
 ENV HSPG_NGINX_PORT=8090
 EXPOSE 8090

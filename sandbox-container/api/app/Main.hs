@@ -44,8 +44,9 @@ main = do
   _ <- initCommands config
 
   withStdoutLogger $ \logger -> do
-    putStrLn $ "Serving API at: " <> show (Config.port config)
-    let settings = setPort (Config.port config) $ setLogger logger defaultSettings
+    let apiPort = Config.apiPort config
+    putStrLn $ "Serving API at: " <> show apiPort
+    let settings = setPort apiPort $ setLogger logger defaultSettings
     runSettings settings $ app config
 
 checkSystemRequirements :: IO ()
