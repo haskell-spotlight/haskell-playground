@@ -9,6 +9,10 @@ build: ## Build the project.
 	npm i
 	npm run build
 
+.PHONY: build-in-docker
+build-in-docker: ## Build the project using predefined docker container.
+	./build-in-docker.sh
+
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
