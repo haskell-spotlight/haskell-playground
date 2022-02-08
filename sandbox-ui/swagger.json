@@ -1,0 +1,137 @@
+{
+    "info": {
+        "description": "https://github.com/haskell-spotlight/haskell-playground",
+        "title": "Haskell Playground Sandbox API",
+        "version": "1.0"
+    },
+    "swagger": "2.0",
+    "basePath": "/api",
+    "paths": {
+        "/fs/tree": {
+            "get": {
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Invalid `fileKind`"
+                    },
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/Tree"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "fileKind",
+                        "type": "string",
+                        "required": false,
+                        "in": "query",
+                        "enum": [
+                            "TermFile",
+                            "CheckFile",
+                            "AnyFile"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/fs/list": {
+            "get": {
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Invalid `fileKind`"
+                    },
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "fileKind",
+                        "type": "string",
+                        "required": false,
+                        "in": "query",
+                        "enum": [
+                            "TermFile",
+                            "CheckFile",
+                            "AnyFile"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "definitions": {
+        "FileKind": {
+            "type": "string",
+            "enum": [
+                "TermFile",
+                "CheckFile",
+                "AnyFile"
+            ]
+        },
+        "Node": {
+            "type": "object",
+            "properties": {
+                "Dir": {
+                    "type": "object",
+                    "required": [
+                        "name"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "File": {
+                    "type": "object",
+                    "required": [
+                        "name",
+                        "kind"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "kind": {
+                            "$ref": "#/definitions/FileKind"
+                        }
+                    }
+                }
+            },
+            "minProperties": 1,
+            "maxProperties": 1
+        },
+        "Tree": {
+            "type": "object",
+            "required": [
+                "rootLabel",
+                "subForest"
+            ],
+            "properties": {
+                "subForest": {
+                    "items": {
+                        "$ref": "#/definitions/Tree"
+                    },
+                    "type": "array"
+                },
+                "rootLabel": {
+                    "$ref": "#/definitions/Node"
+                }
+            }
+        }
+    }
+}

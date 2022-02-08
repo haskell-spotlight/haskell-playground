@@ -1,17 +1,12 @@
 .DEFAULT_GOAL := help
 
 .PHONY: dev
-dev: ## Start development.
+dev: ## Start development
 	npm run dev
 
 .PHONY: build
-build: ## Build the project.
-	npm i
-	npm run build
-
-.PHONY: build-in-docker
-build-in-docker: ## Build the project using predefined docker container.
-	./build-in-docker.sh
+build: ## Build the project
+	./build.sh
 
 .PHONY: help
 help:

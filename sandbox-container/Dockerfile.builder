@@ -22,6 +22,7 @@ RUN ghcup install ghc 8.10.7 && ghcup set ghc 8.10.7
 RUN ghcup install cabal 3.6.2.0 && ghcup set cabal 3.6.2.0
 
 # It should be in another place, but it is here to cache haskell deps. Without it build takes ~15 minutes more.
+RUN cabal update
 COPY --chown=haskeller:haskeller ./api/cabal.project.freeze .
 COPY --chown=haskeller:haskeller ./api/api.cabal .
-RUN cabal update && cabal build --only-dependencies
+RUN cabal build --only-dependencies

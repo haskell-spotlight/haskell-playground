@@ -2,7 +2,7 @@ import '../styles/fonts.css';
 import '../styles/normalize.css';
 import '../styles/globals.css';
 import * as s from './Widget.module.css';
-import axios from 'axios';
+import * as api from '../api';
 
 import React, { useEffect, useState } from 'react';
 
@@ -14,9 +14,15 @@ export type WidgetProps = {
 
 export const Widget = (props: WidgetProps) => {
   const [activeTab, setActiveTab] = useState('editor');
-  const [fsTree, setFsTree] = useState(null);
-
+  const [client, setClient] = useState<ReturnType<typeof api.DefaultApiFp>>();
+  const [fsTree, setFsTree] = useState<api.Tree>();
   useEffect(() => {
+    (async () => {
+      const client = api.DefaultApiFp();
+      setClient(client);
+      const tree = await (await (await client.fsTreeGet('AnyFile'))()).data;
+      setFsTree(tree);
+    })()
   }, []);
 
   const tabs: Tab[] = [{
