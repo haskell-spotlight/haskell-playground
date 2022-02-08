@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Config (Config, getConfig, excludeFiles, sandboxRoot, uiDist, apiPort, origin, publicUrl, nginxConfigPath, nginxPort) where
+module Sandbox.Config (Config, getConfig, excludeFiles, sandboxRoot, uiDist, apiPort, origin, publicUrl, nginxConfigPath, nginxPort) where
 
 import qualified Data.Text as T
 import qualified System.Directory as FP

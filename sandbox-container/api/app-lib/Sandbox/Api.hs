@@ -2,11 +2,13 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sandbox.Api (Api, api, apiServer) where
+module Sandbox.Api (Api, api, apiServer, writeSwaggerJson) where
 
-import qualified Config
 import Control.Lens
+import Data.Aeson.Encode.Pretty (encodePretty)
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Swagger (HasBasePath (basePath), HasDescription (description), HasInfo (info), HasTitle (title), HasVersion (version), Swagger)
+import qualified Sandbox.Config as Config
 import qualified Sandbox.FileSystem as Fs
 import Servant
 import Servant.Swagger (HasSwagger (toSwagger))
@@ -37,3 +39,6 @@ apiServer config = Fs.api config :<|> swaggerSchemaUIServer sandboxSwagger
 
 api :: Proxy Api
 api = Proxy
+
+writeSwaggerJson :: IO ()
+writeSwaggerJson = BL8.writeFile "swagger.json" (encodePretty sandboxSwagger)

@@ -1,4 +1,4 @@
-FROM visortelle/haskell-playground-sandbox-base:main
+FROM visortelle/haskell-playground-sandbox:main
 
 COPY . .
 

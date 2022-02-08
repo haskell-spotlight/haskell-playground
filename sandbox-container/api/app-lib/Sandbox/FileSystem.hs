@@ -8,7 +8,6 @@
 
 module Sandbox.FileSystem (Fs, Node, Api, FileKind (TermFile, CheckFile, AnyFile), api, readAsTree, readAsList, treeToList, filterByFileKind) where
 
-import qualified Config
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
 import Data.List (intercalate)
@@ -19,6 +18,7 @@ import qualified Data.Tree as Data.List
 import qualified Data.Tree as TR
 import Data.Universe.Helpers (diagonal)
 import GHC.Generics (Generic)
+import qualified Sandbox.Config as Config
 import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP

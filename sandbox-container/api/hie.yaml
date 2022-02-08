@@ -3,20 +3,8 @@ cradle:
     - path: "app/Main.hs"
       component: "api:exe:api"
 
-    - path: "app/Config.hs"
-      component: "api:exe:api"
+    - path: "app-lib"
+      component: "lib:api"
 
-    - path: "app/ReverseProxy.hs"
-      component: "api:exe:api"
-
-    - path: "app/Swagger.hs"
-      component: "api:exe:api"
-
-    - path: "app/Sandbox/Api.hs"
-      component: "api:exe:api"
-
-    - path: "app/Sandbox/FileSystem.hs"
-      component: "api:exe:api"
-
-    - path: "app/Sandbox/Commands.hs"
-      component: "api:exe:api"
+    - path: "post-build/Main.hs"
+      component: "api:exe:gen-swagger-json"

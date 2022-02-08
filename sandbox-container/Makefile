@@ -5,19 +5,21 @@ dev: ## Run container for development
 	make build-skip-ui
 	./dev.sh
 
+.PHONY: build-builder
+build-builder: ## Build builder docker contianer
+	docker build -t visortelle/haskell-playground-sandbox-builder:main -f Dockerfile.builder .
+
 .PHONY: build-skip-ui
 build-skip-ui: ## Build docker image skipping building UI
-	docker build -t visortelle/haskell-playground-sandbox-base:main .
+	docker build -t visortelle/haskell-playground-sandbox:main .
 
 .PHONY: build
 build: ## Build docker image
-	cd ../sandbox-ui && make build
-	cp -r ../sandbox-ui/dist/* ./ui/
-	docker build -t visortelle/haskell-playground-sandbox-base:main .
+	./build.sh
 
 .PHONY: publish
 publish: ## Publish docker image to registry
-	docker push visortelle/haskell-playground-sandbox-base:main
+	docker push visortelle/haskell-playground-sandbox:main
 
 .PHONY: help
 help:

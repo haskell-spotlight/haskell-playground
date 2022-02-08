@@ -30,11 +30,27 @@ executable api
 
   default-extensions: OverloadedStrings
 
-  -- Modules included in this command, other than Main.
-  other-modules: Config, ReverseProxy, Sandbox.Api, Sandbox.FileSystem, Sandbox.Commands
+  build-depends:
+    base,
+    api,
+    warp,
+    wai-logger,
+    servant-server,
+    directory,
+    show-prettyprint
 
-  -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
+  hs-source-dirs:   app
+  default-language: Haskell2010
+
+
+library
+  ghc-options:
+    -Wall
+
+  default-extensions: OverloadedStrings
+
+  exposed-modules: Sandbox.Config, Sandbox.ReverseProxy, Sandbox.Api, Sandbox.FileSystem, Sandbox.Commands
+
   build-depends:
     , aeson
     , aeson-pretty
@@ -60,5 +76,20 @@ executable api
     , wai-logger
     , warp
 
-  hs-source-dirs:   app
+  hs-source-dirs:   app-lib
+  default-language: Haskell2010
+
+executable gen-swagger-json
+  main-is:          Main.hs
+
+  ghc-options:
+    -Wall
+
+  default-extensions: OverloadedStrings
+
+  build-depends:
+    base,
+    api
+
+  hs-source-dirs:   gen-swagger-json
   default-language: Haskell2010

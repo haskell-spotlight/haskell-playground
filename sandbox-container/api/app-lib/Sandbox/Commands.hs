@@ -7,7 +7,6 @@
 
 module Sandbox.Commands (Command, initCommands) where
 
-import qualified Config
 import Data.Aeson (ToJSON)
 import Data.Maybe (catMaybes)
 import qualified Data.String as S
@@ -16,9 +15,10 @@ import Data.Text.Encoding.Base32 (encodeBase32Unpadded)
 import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode)
 import Network.Socket.Free (getFreePort)
-import ReverseProxy (Upstream)
-import qualified ReverseProxy
+import qualified Sandbox.Config as Config
 import qualified Sandbox.FileSystem as Fs
+import Sandbox.ReverseProxy (Upstream)
+import qualified Sandbox.ReverseProxy as ReverseProxy
 import Servant
 import qualified System.Directory as FP
 import qualified System.FilePath as FP

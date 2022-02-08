@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module ReverseProxy (Config (Config), Upstream (Upstream, name, addr), publicUrl, apiPort, upstreams, uiDist, nginxConfigPath, nginxPort, run, renderNginxConfig) where
+module Sandbox.ReverseProxy (Config (Config), Upstream (Upstream, name, addr), publicUrl, apiPort, upstreams, uiDist, nginxConfigPath, nginxPort, run, renderNginxConfig) where
 
 import qualified Data.ByteString as SD
 import qualified Data.Text as T

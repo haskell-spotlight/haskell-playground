@@ -4,7 +4,7 @@
 
 module Main where
 
-import qualified Config
+import qualified Sandbox.Config as Config
 import Network.Wai.Handler.Warp
   ( defaultSettings,
     runSettings,
@@ -12,13 +12,14 @@ import Network.Wai.Handler.Warp
     setPort,
   )
 import Network.Wai.Logger (withStdoutLogger)
+import Sandbox.Api (writeSwaggerJson)
+import qualified Sandbox.Api as Api
 import Sandbox.Commands (initCommands)
 import Servant
 import qualified System.Directory as SD
 import System.Exit (ExitCode (ExitFailure))
 import qualified System.Exit as Exit
 import Text.Show.Prettyprint (prettyShow)
-import qualified Sandbox.Api as Api
 
 app :: Config.Config -> Application
 app config = serve Api.api $ Api.apiServer config
