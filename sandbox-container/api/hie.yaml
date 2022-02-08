@@ -9,6 +9,12 @@ cradle:
     - path: "app/ReverseProxy.hs"
       component: "api:exe:api"
 
+    - path: "app/Swagger.hs"
+      component: "api:exe:api"
+
+    - path: "app/Sandbox/Api.hs"
+      component: "api:exe:api"
+
     - path: "app/Sandbox/FileSystem.hs"
       component: "api:exe:api"
 

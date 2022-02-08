@@ -13,23 +13,15 @@ import Network.Wai.Handler.Warp
   )
 import Network.Wai.Logger (withStdoutLogger)
 import Sandbox.Commands (initCommands)
-import qualified Sandbox.FileSystem as Fs
 import Servant
 import qualified System.Directory as SD
 import System.Exit (ExitCode (ExitFailure))
 import qualified System.Exit as Exit
 import Text.Show.Prettyprint (prettyShow)
-
-type SandboxApi = Fs.Api
-
-sandboxApiServer :: Config.Config -> Server SandboxApi
-sandboxApiServer = Fs.api
-
-sandboxApi :: Proxy SandboxApi
-sandboxApi = Proxy
+import qualified Sandbox.Api as Api
 
 app :: Config.Config -> Application
-app config = serve sandboxApi $ sandboxApiServer config
+app config = serve Api.api $ Api.apiServer config
 
 main :: IO ()
 main = do

@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -12,6 +13,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
 import Data.List (intercalate)
 import Data.Maybe (catMaybes)
+import Data.Swagger (ToParamSchema, ToSchema)
 import Data.Tree (Tree (rootLabel))
 import qualified Data.Tree as Data.List
 import qualified Data.Tree as TR
@@ -26,10 +28,14 @@ data FileKind = TermFile | CheckFile | AnyFile
 
 instance ToJSON FileKind
 
+instance ToParamSchema FileKind
+
+instance ToSchema FileKind
+
 instance FromHttpApiData FileKind where
-  parseQueryParam "term" = Right TermFile
-  parseQueryParam "check" = Right CheckFile
-  parseQueryParam "any" = Right AnyFile
+  parseQueryParam "TermFile" = Right TermFile
+  parseQueryParam "CheckFile" = Right CheckFile
+  parseQueryParam "AnyFile" = Right AnyFile
   parseQueryParam _ = Left "Wrong file kind provided"
 
 determineFileKind :: FilePath -> FileKind
@@ -43,11 +49,15 @@ data Node = File {name :: FilePath, kind :: FileKind} | Dir {name :: FilePath}
 
 instance ToJSON Node
 
+instance ToSchema Node
+
+instance ToSchema (TR.Tree Node)
+
 type Fs = TR.Tree Node
 
 type Api =
-  "fs" :> "tree" :> QueryParam "fileKind" FileKind :> Get '[JSON] Fs
-    :<|> "fs" :> "list" :> QueryParam "fileKind" FileKind :> Get '[JSON] [FilePath]
+  "tree" :> QueryParam "fileKind" FileKind :> Get '[JSON] Fs
+    :<|> "list" :> QueryParam "fileKind" FileKind :> Get '[JSON] [FilePath]
 
 treePaths :: Tree a -> [[a]]
 treePaths (TR.Node x []) = [[x]]

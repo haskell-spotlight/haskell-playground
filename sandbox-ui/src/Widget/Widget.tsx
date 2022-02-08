@@ -2,8 +2,9 @@ import '../styles/fonts.css';
 import '../styles/normalize.css';
 import '../styles/globals.css';
 import * as s from './Widget.module.css';
+import axios from 'axios';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Tabs, { Tab } from './Tabs';
 
@@ -13,6 +14,10 @@ export type WidgetProps = {
 
 export const Widget = (props: WidgetProps) => {
   const [activeTab, setActiveTab] = useState('editor');
+  const [fsTree, setFsTree] = useState(null);
+
+  useEffect(() => {
+  }, []);
 
   const tabs: Tab[] = [{
     id: 'editor',
@@ -23,7 +28,7 @@ export const Widget = (props: WidgetProps) => {
   }, {
     id: 'shell',
     title: 'Shell'
-  },];
+  }];
 
   return (
     <div className={s.widget}>
