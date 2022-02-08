@@ -6,5 +6,5 @@ cradle:
     - path: "app-lib"
       component: "lib:api"
 
-    - path: "post-build/Main.hs"
+    - path: "gen-swagger-json/Main.hs"
       component: "api:exe:gen-swagger-json"

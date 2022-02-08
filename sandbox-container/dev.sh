@@ -3,6 +3,7 @@
 set -eo pipefail
 
 docker run \
+  --rm \
   -it \
   -p 8090:8090 \
   -e HSPG_ORIGIN="localhost:8090" \

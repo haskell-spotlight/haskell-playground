@@ -6,7 +6,7 @@ import * as api from '../api';
 
 import React, { useEffect, useState } from 'react';
 
-import Tabs, { Tab } from './Tabs';
+import Tree, { RenderNode } from '../react-haskell/Data/Tree/Tree';
 
 export type WidgetProps = {
   serverUrl?: string,
@@ -16,59 +16,33 @@ export const Widget = (props: WidgetProps) => {
   const [activeTab, setActiveTab] = useState('editor');
   const [client, setClient] = useState<ReturnType<typeof api.DefaultApiFp>>();
   const [fsTree, setFsTree] = useState<api.Tree>();
+  console.log('fsTree', fsTree);
   useEffect(() => {
     (async () => {
       const client = api.DefaultApiFp();
       setClient(client);
-      const tree = await (await (await client.fsTreeGet('AnyFile'))()).data;
+      const tree = await (await (await client.fsTreeGet(['TermFile', 'CheckFile']))()).data;
       setFsTree(tree);
     })()
   }, []);
 
-  const tabs: Tab[] = [{
-    id: 'editor',
-    title: 'Editor'
-  }, {
-    id: 'repl',
-    title: 'REPL'
-  }, {
-    id: 'shell',
-    title: 'Shell'
-  }];
-
   return (
     <div className={s.widget}>
-      <Tabs activeTab={activeTab} tabs={tabs} onTabChange={setActiveTab} />
-
-      <div className={s.tabs}>
-        <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>
-          <iframe
-            className={s.terminal}
-            src={`http://${props.serverUrl}/repl`}
-            allow='autoplay'
-            frameBorder="0"
+      {fsTree && (
+        <div>
+          <Tree
+            tree={fsTree}
+            cssClasses={{ node: '', rootLabel: '', subForest: '' }}
+            renderNode={renderFsTreeNode}
           />
         </div>
-        <div className={`${s.tab} ${activeTab === 'repl' ? s.activeTab : ''}`}>
-          <iframe
-            className={s.terminal}
-            src={`http://${props.serverUrl}/repl`}
-            allow='autoplay'
-            frameBorder="0"
-          />
-        </div>
-
-        <div className={`${s.tab} ${activeTab === 'shell' ? s.activeTab : ''}`}>
-          <iframe
-            className={s.terminal}
-            src={`http://${props.serverUrl}/shell`}
-            allow='autoplay'
-            frameBorder="0"
-          />
-        </div>
-      </div>
-    </div >
+      )}
+    </div>
   );
 }
 
+const renderFsTreeNode: RenderNode = (props) => {
+  const label = props.Dir?.name || props.File?.name;
+  return (<div>{label}</div>);
+}
 export default Widget;

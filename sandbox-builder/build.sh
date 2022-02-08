@@ -3,10 +3,10 @@
 set -eo pipefail
 
 repo_root_dir=$(git rev-parse --show-toplevel)
-this_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+d=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-sandboxes_dir="${this_dir}/../sandboxes"
+sandboxes_dir="${d}/../sandboxes"
 sandbox_name="${1}"
 sandbox_dir="${sandboxes_dir}/${sandbox_name}"
 
-docker build -f "${this_dir}/Dockerfile" -t "visortelle/haskell-playground-sandbox:${sandbox_name}" "$sandbox_dir"
+docker build -f "${d}/Dockerfile" -t "visortelle/haskell-playground-sandbox:${sandbox_name}" "$sandbox_dir"

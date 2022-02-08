@@ -19,7 +19,6 @@ import qualified Sandbox.Config as Config
 import qualified Sandbox.FileSystem as Fs
 import Sandbox.ReverseProxy (Upstream)
 import qualified Sandbox.ReverseProxy as ReverseProxy
-import Servant
 import qualified System.Directory as FP
 import qualified System.FilePath as FP
 import qualified System.Process as P
@@ -58,8 +57,8 @@ initCommands config = do
 
 _initCommands :: Fs.Fs -> Config.Config -> IO [Command]
 _initCommands fs config = do
-  let termCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.TermFile fs
-  let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKind Fs.CheckFile fs
+  let termCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.TermFile] fs
+  let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.CheckFile] fs
 
   let termCommands = map (mkCommand config Fs.TermFile) termCommandFiles
   let checkCommands = map (mkCommand config Fs.CheckFile) checkCommandFiles

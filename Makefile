@@ -2,9 +2,7 @@
 
 .PHONY: dev
 dev: ## Start development.
-	make build
-	docker run -it -d -p 8080:8080 -e HSPG_ORIGIN="localhost:8080" -e HSPG_PUBLIC_URL="http://localhost:8080" visortelle/haskell-playground-sandbox:base-sandbox
-	cd widget && make dev
+	cd sandbox-container && make dev
 
 .PHONY: build
 build: ## Build.

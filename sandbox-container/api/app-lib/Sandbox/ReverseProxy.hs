@@ -132,7 +132,7 @@ http {
     }
 
     location / {
-      return 301 $scheme://$http_host/ui;
+      return 301 $scheme://$http_host/ui/;
     }
   }
 }

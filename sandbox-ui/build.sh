@@ -2,11 +2,15 @@
 
 set -e
 
-this_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+d=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-cp $this_dir/../sandbox-container/api/swagger.json ./
-set +e; mkdir $this_dir/src/api; set -e;
-$this_dir/swagger-to-ts.sh "${this_dir}/swagger.json" "${this_dir}/src/api"
+cp $d/../sandbox-container/api/swagger.json ./
 
-docker build -t haskell-playground-ui-builder -f $this_dir/Dockerfile.builder $this_dir
-docker run -it --mount type=bind,source="$(pwd)",target="/src" haskell-playground-ui-builder
+set +e
+mkdir $d/src/api
+set -e
+
+$d/swagger-to-ts.sh "${d}/swagger.json" "${d}/src/api"
+
+docker build -t haskell-playground-ui-builder -f $d/Dockerfile.builder $d
+docker run --rm -it --mount type=bind,source="$(pwd)",target="/src" haskell-playground-ui-builder
