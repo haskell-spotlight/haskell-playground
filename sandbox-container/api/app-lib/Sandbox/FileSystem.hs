@@ -43,9 +43,9 @@ instance FromHttpApiData FileKind where
 
 determineFileKind :: FilePath -> FileKind
 determineFileKind filePath
-  | FP.dropExtension (FP.takeExtensions filePath) == ".term" = TermFile
-  | FP.dropExtension (FP.takeExtensions filePath) == ".check" = CheckFile
-  | FP.dropExtension (FP.takeExtensions filePath) == ".view" = ViewFile
+  | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".term" = TermFile
+  | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".check" = CheckFile
+  | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".view" = ViewFile
   | otherwise = AnyFile
 
 data Node = File {name :: FilePath, kind :: FileKind} | Dir {name :: FilePath}
