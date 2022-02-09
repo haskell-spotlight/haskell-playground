@@ -8,7 +8,7 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sandbox.FileSystem (Fs, Node, Api, FileKind (TermFile, CheckFile, AnyFile), api, readAsTree, readAsList, treeToList, filterByFileKinds) where
+module Sandbox.FileSystem (Fs, Node, Api, FileKind (TermFile, CheckFile, ViewFile, AnyFile), api, readAsTree, readAsList, treeToList, filterByFileKinds) where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -25,7 +25,7 @@ import Servant
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data FileKind = TermFile | CheckFile | AnyFile
+data FileKind = TermFile | CheckFile | ViewFile | AnyFile
   deriving (Eq, Show, Generic)
 
 instance ToJSON FileKind
@@ -37,6 +37,7 @@ instance ToSchema FileKind
 instance FromHttpApiData FileKind where
   parseQueryParam "TermFile" = Right TermFile
   parseQueryParam "CheckFile" = Right CheckFile
+  parseQueryParam "ViewFile" = Right ViewFile
   parseQueryParam "AnyFile" = Right AnyFile
   parseQueryParam _ = Left "Wrong file kind provided"
 
@@ -44,6 +45,7 @@ determineFileKind :: FilePath -> FileKind
 determineFileKind filePath
   | FP.dropExtension (FP.takeExtensions filePath) == ".term" = TermFile
   | FP.dropExtension (FP.takeExtensions filePath) == ".check" = CheckFile
+  | FP.dropExtension (FP.takeExtensions filePath) == ".view" = ViewFile
   | otherwise = AnyFile
 
 data Node = File {name :: FilePath, kind :: FileKind} | Dir {name :: FilePath}

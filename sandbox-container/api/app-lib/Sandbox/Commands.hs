@@ -3,7 +3,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Sandbox.Commands (Command, initCommands) where
 
@@ -37,6 +36,7 @@ instance ToJSON CheckCommandRun
 data Command
   = TermCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text}
   | CheckCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text, runs :: [CheckCommandRun]}
+  | ViewCommand {commandId :: T.Text, relPath :: FilePath, publicUrl :: T.Text, mimeType :: T.Text }
   deriving (Eq, Show, Generic)
 
 instance ToJSON ExitCode
@@ -59,11 +59,13 @@ _initCommands :: Fs.Fs -> Config.Config -> IO [Command]
 _initCommands fs config = do
   let termCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.TermFile] fs
   let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.CheckFile] fs
+  let viewCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.ViewFile] fs
 
   let termCommands = map (mkCommand config Fs.TermFile) termCommandFiles
   let checkCommands = map (mkCommand config Fs.CheckFile) checkCommandFiles
+  let viewCommands = map (mkCommand config Fs.ViewFile) viewCommandFiles
 
-  let commands = catMaybes $ termCommands <> checkCommands
+  let commands = catMaybes $ termCommands <> checkCommands <> viewCommands
 
   upstreams <- mapM (initCommand config) commands
 
@@ -141,4 +143,9 @@ mkCommand config Fs.CheckFile relPath = Just $ CheckCommand {commandId, relPath,
   where
     commandId = encodeCommandId relPath
     terminalUrl = getTerminalUrl commandId config
+mkCommand _ Fs.ViewFile relPath = Just $ ViewCommand {commandId, relPath, publicUrl, mimeType}
+  where
+    commandId = encodeCommandId relPath
+    publicUrl = ""
+    mimeType = ""
 mkCommand _ _ _ = Nothing

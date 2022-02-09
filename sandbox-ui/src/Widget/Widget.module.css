@@ -18,9 +18,47 @@
 }
 
 .activeTab {
-  display: flex;;
+  display: flex;
 }
 
 .terminal {
   flex: 1;
+}
+
+.treeContainer {
+  display: flex;
+  padding: 8px;
+  width: 200px;
+}
+
+.treeNode {
+  font-size: 12px;
+  font-family: "Fira Code", monospace;
+  flex: 1;
+}
+
+.treeRootLabel {
+}
+
+.treeRootLabel:hover {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.treeSubForest {
+}
+
+.fsTreeNode {
+  background-color: var(--purple-color-2);
+  padding: 6px 1em;
+  color: #fff;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  box-shadow: 1rem 1rem 2rem rgb(0 0 0 / 50%);
+}
+
+.fsTreeNodeDir {
+}
+
+.fsTreeNodeFile {
 }
