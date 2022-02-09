@@ -15,7 +15,7 @@ import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode)
 import Network.Socket.Free (getFreePort)
 import qualified Sandbox.Config as Config
-import qualified Sandbox.FileSystem as Fs
+import qualified Sandbox.FileSystem as FS
 import Sandbox.ReverseProxy (Upstream)
 import qualified Sandbox.ReverseProxy as ReverseProxy
 import qualified System.Directory as FP
@@ -48,22 +48,22 @@ initCommands config = do
   let sandboxRoot = Config.sandboxRoot config
   putStrLn $ "Looking commands in: " <> sandboxRoot
 
-  fs <- Fs.readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
+  fs <- FS.readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
   case fs of
     Just fs -> _initCommands fs config
     Nothing -> do
       putStrLn $ "Unable to find sandbox root " <> sandboxRoot
       pure []
 
-_initCommands :: Fs.Fs -> Config.Config -> IO [Command]
+_initCommands :: FS.Fs -> Config.Config -> IO [Command]
 _initCommands fs config = do
-  let termCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.TermFile] fs
-  let checkCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.CheckFile] fs
-  let viewCommandFiles = Fs.treeToList $ Fs.filterByFileKinds [Fs.ViewFile] fs
+  let termCommandFiles = FS.treeToList $ FS.filterByFileKinds [FS.TermFile] fs
+  let checkCommandFiles = FS.treeToList $ FS.filterByFileKinds [FS.CheckFile] fs
+  let viewCommandFiles = FS.treeToList $ FS.filterByFileKinds [FS.ViewFile] fs
 
-  let termCommands = map (mkCommand config Fs.TermFile) termCommandFiles
-  let checkCommands = map (mkCommand config Fs.CheckFile) checkCommandFiles
-  let viewCommands = map (mkCommand config Fs.ViewFile) viewCommandFiles
+  let termCommands = map (mkCommand config FS.TermFile) termCommandFiles
+  let checkCommands = map (mkCommand config FS.CheckFile) checkCommandFiles
+  let viewCommands = map (mkCommand config FS.ViewFile) viewCommandFiles
 
   let commands = catMaybes $ termCommands <> checkCommands <> viewCommands
 
@@ -134,16 +134,16 @@ getTerminalUrl commandId config = Config.publicUrl config <> "/commands/" <> com
 encodeCommandId :: FilePath -> T.Text
 encodeCommandId relPath = T.toLower $ encodeBase32Unpadded $ T.pack relPath
 
-mkCommand :: Config.Config -> Fs.FileKind -> FilePath -> Maybe Command
-mkCommand config Fs.TermFile relPath = Just $ TermCommand {commandId, relPath, terminalUrl}
+mkCommand :: Config.Config -> FS.FileKind -> FilePath -> Maybe Command
+mkCommand config FS.TermFile relPath = Just $ TermCommand {commandId, relPath, terminalUrl}
   where
     commandId = encodeCommandId relPath
     terminalUrl = getTerminalUrl commandId config
-mkCommand config Fs.CheckFile relPath = Just $ CheckCommand {commandId, relPath, terminalUrl, runs = []}
+mkCommand config FS.CheckFile relPath = Just $ CheckCommand {commandId, relPath, terminalUrl, runs = []}
   where
     commandId = encodeCommandId relPath
     terminalUrl = getTerminalUrl commandId config
-mkCommand _ Fs.ViewFile relPath = Just $ ViewCommand {commandId, relPath, publicUrl, mimeType}
+mkCommand _ FS.ViewFile relPath = Just $ ViewCommand {commandId, relPath, publicUrl, mimeType}
   where
     commandId = encodeCommandId relPath
     publicUrl = ""

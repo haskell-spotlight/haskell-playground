@@ -7,13 +7,17 @@ export type TreeNode = api.Node;
 export type TreeProps = {
   tree: Tree,
   depth: number,
-  filter: (tree: Tree, depth: number) => {
+  renderNode: RenderNode,
+}
+
+export type RenderNode = (tree: TreeNode, depth: number) => ({
+  getVisibility: (tree: Tree, depth: number) => {
     tree: boolean,
     rootLabel: boolean,
     subForest: boolean
   },
   alterTree: (tree: Tree, depth: number) => Tree,
-  renderNode: RenderNode,
+  rootLabel: React.ReactNode,
   cssClasses: {
     node: string,
     rootLabel: string,
@@ -24,23 +28,22 @@ export type TreeProps = {
     rootLabel: React.CSSProperties,
     subForest: React.CSSProperties
   }
-}
-
-export type RenderNode = (tree: TreeNode, depth: number) => React.ReactNode;
+});
 
 const TreeView = (props: TreeProps) => {
-  const tree = props.alterTree(props.tree, props.depth);
-  const filter = props.filter(tree, props.depth);
+  const { alterTree, getVisibility, rootLabel, cssClasses, styles } = props.renderNode(props.tree.rootLabel, props.depth);
+  const tree = alterTree(props.tree, props.depth);
+  const visibility = getVisibility(tree, props.depth);
 
-  return !filter.tree ? null : (
-    <div className={props.cssClasses.node} style={props.styles.node}>
-      {filter.rootLabel && (
-        <div className={props.cssClasses.rootLabel} style={props.styles.rootLabel}>
-          {props.renderNode(tree.rootLabel, props.depth)}
+  return !visibility.tree ? null : (
+    <div className={cssClasses.node} style={styles.node}>
+      {visibility.rootLabel && (
+        <div className={cssClasses.rootLabel} style={styles.rootLabel}>
+          {rootLabel}
         </div>
       )}
-      {filter.subForest && tree.subForest.length > 0 && (
-        <div className={props.cssClasses.subForest} style={props.styles.subForest}>
+      {visibility.subForest && tree.subForest.length > 0 && (
+        <div className={cssClasses.subForest} style={styles.subForest}>
           {tree.subForest.map(tree => (
             <TreeView
               key={JSON.stringify(tree.rootLabel)}

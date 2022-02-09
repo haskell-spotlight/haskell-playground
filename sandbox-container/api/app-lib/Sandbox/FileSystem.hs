@@ -6,11 +6,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE TypeOperators #-}
 
-module Sandbox.FileSystem (Fs, Node, Api, FileKind (TermFile, CheckFile, ViewFile, AnyFile), api, readAsTree, readAsList, treeToList, filterByFileKinds) where
+module Sandbox.FileSystem (Fs, Node, FileKind (TermFile, CheckFile, ViewFile, AnyFile), readAsTree, readAsList, treeToList, filterByFileKinds) where
 
-import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
 import Data.List (intercalate)
 import Data.Maybe (catMaybes)
@@ -20,8 +18,7 @@ import qualified Data.Tree as Data.List
 import qualified Data.Tree as TR
 import Data.Universe.Helpers (diagonal)
 import GHC.Generics (Generic)
-import qualified Sandbox.Config as Config
-import Servant
+import Servant ( FromHttpApiData(parseQueryParam) )
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
@@ -70,10 +67,6 @@ instance ToSchema Node
 instance ToSchema (TR.Tree Node)
 
 type Fs = TR.Tree Node
-
-type Api =
-  "tree" :> QueryParams "fileKinds" FileKind :> Get '[JSON] Fs
-    :<|> "list" :> QueryParams "fileKinds" FileKind :> Get '[JSON] [FilePath]
 
 treePaths :: Tree a -> [[a]]
 treePaths (TR.Node x []) = [[x]]
@@ -137,20 +130,3 @@ readAsList root excludeFiles = do
   case tree of
     Just t -> pure $ Just (treeToList t)
     Nothing -> pure Nothing
-
-treeHandler :: Config.Config -> [FileKind] -> Handler Fs
-treeHandler config fileKinds = do
-  dir <- liftIO $ readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
-  case dir of
-    Nothing -> throwError err500 {errBody = "Sandbox root directory not found"}
-    Just d -> pure $ filterByFileKinds fileKinds d
-
-listHandler :: Config.Config -> [FileKind] -> Handler [FilePath]
-listHandler config fileKinds = do
-  dir <- liftIO $ readAsTree (Config.sandboxRoot config) (Config.excludeFiles config)
-  case dir of
-    Nothing -> throwError err500 {errBody = "Sandbox root directory not found"}
-    Just d -> pure $ treeToList $ filterByFileKinds fileKinds d
-
-api :: Config.Config -> ([FileKind] -> Handler Fs) :<|> ([FileKind] -> Handler [FilePath])
-api config = treeHandler config :<|> listHandler config

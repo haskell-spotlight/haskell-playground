@@ -1,6 +1,7 @@
 .treeContainer {
   display: flex;
-  width: 200px;
+  min-width: 100px;
+  max-width: 240px;
   border-radius: 4px;
   overflow: hidden;
   padding: 12px 8px;
@@ -8,10 +9,15 @@
 }
 
 .treeNode {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
   flex: 1;
 }
 
 .treeRootLabel {
+  user-select: none;
 }
 
 .treeSubForest {
@@ -29,10 +35,9 @@
   align-items: center;
   justify-content: flex-start;
   border-radius: 4px;
-
 }
 
-.fsTreeNode:hover:not(.fsTreeNodeDir) {
+.fsTreeNode:hover {
   cursor: pointer;
   background-color: #f5f5f5;
 }
@@ -60,4 +65,8 @@
 }
 
 .fsTreeNodeName {
+  flex: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }

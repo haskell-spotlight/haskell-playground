@@ -49,7 +49,7 @@ library
 
   default-extensions: OverloadedStrings
 
-  exposed-modules: Sandbox.Config, Sandbox.ReverseProxy, Sandbox.Api, Sandbox.FileSystem, Sandbox.Commands
+  exposed-modules: Sandbox.Config, Sandbox.ReverseProxy, Sandbox.Api, Sandbox.FileSystem, Sandbox.FileSystemApi, Sandbox.Commands
 
   build-depends:
     , aeson

@@ -4,11 +4,10 @@ import TreeView, { RenderNode, Tree } from '../react-haskell/Data/Tree/TreeView'
 import * as api from '../api';
 import SvgIcon from '../icons/SVGIcon';
 import arrowDownIcon from '!!raw-loader!../icons/arrow-down.svg';
+import arrowRightIcon from '!!raw-loader!../icons/arrow-right.svg';
 import termIcon from '!!raw-loader!../icons/term.svg';
 import viewIcon from '!!raw-loader!../icons/view.svg';
 import checkUnknownIcon from '!!raw-loader!../icons/check-unknown.svg';
-import checkOkIcon from '!!raw-loader!../icons/check-ok.svg';
-import checkNotOkIcon from '!!raw-loader!../icons/check-not-ok.svg';
 
 type CommandsProps = {
   serverUrl?: string
@@ -27,8 +26,6 @@ const Commands = (props: CommandsProps) => {
       setFsTree(tree);
 
       const defaultCommand = tree.subForest.find(c => c.rootLabel.File && c.rootLabel.File.name.match(/^.*\.default\.(term|check|view)\.([^.]*)$/));
-      console.log('active command', defaultCommand);
-      console.log(tree.subForest);
       if (defaultCommand) {
         setActiveCommand(['.', defaultCommand.rootLabel.File!.name]);
       }
@@ -42,15 +39,7 @@ const Commands = (props: CommandsProps) => {
           <TreeView
             tree={fsTree}
             depth={0}
-            cssClasses={{ node: s.treeNode, rootLabel: s.treeRootLabel, subForest: s.treeSubForest }}
-            styles={{ node: {}, rootLabel: {}, subForest: {} }}
             renderNode={renderNode}
-            filter={(tree) => ({
-              tree: true,
-              rootLabel: tree.rootLabel.Dir?.name !== '.',
-              subForest: true
-            })}
-            alterTree={sortSubForest}
           />
         </div>
       )}
@@ -72,12 +61,15 @@ const sortSubForest = (tree: Tree): Tree => {
 }
 
 const renderNode: RenderNode = (tree, depth) => {
+  const isRoot = depth === 0;
+  const [isCollapsed, setIsCollapsed] = useState(!isRoot);
+
   let label = '';
   let icon = null;
 
   if (tree.Dir) {
     label = tree.Dir.name;
-    icon = <SvgIcon svg={arrowDownIcon} style={{ transform: 'scale(1.5)', fill: 'var(--text-color)' }} />
+    icon = <SvgIcon svg={isCollapsed ? arrowRightIcon : arrowDownIcon} style={{ transform: 'scale(1.5)', fill: 'var(--text-color)' }} />
 
   } else if (tree.File && (tree.File.kind === 'TermFile')) {
     label = tree.File?.name.replace(/\.term\.([^.]*)$/, '');
@@ -95,13 +87,37 @@ const renderNode: RenderNode = (tree, depth) => {
 
   label = label.replace(/^(.*)\.default\.([^.]*)$/, '$1.$2');
 
-  return (
-    <div className={`${s.fsTreeNode} ${tree.Dir ? s.fsTreeNodeDir : s.fsTreeNodeFile}`}>
-      {Array.from(Array(depth - 1)).map((_, i) => <div key={i} className={s.fsTreeNodeIndent}></div>)}
+  const rootLabel = (
+    <div
+      className={`${s.fsTreeNode} ${tree.Dir ? s.fsTreeNodeDir : s.fsTreeNodeFile}`}
+      title={label}
+      onClick={() => setIsCollapsed(!isCollapsed)}
+    >
+      {isRoot ? null : Array.from(Array(depth - 1)).map((_, i) => <div key={i} className={s.fsTreeNodeIndent}></div>)}
       <div className={s.fsTreeNodeIcon}>{icon}</div>
       <div className={s.fsTreeNodeName}>{label}</div>
     </div>
   );
+
+  const getVisibility = (_: Tree) => ({
+    tree: true,
+    rootLabel: !isRoot,
+    subForest: isRoot || !isCollapsed
+  });
+
+  const alterTree = sortSubForest;
+
+  const cssClasses = { node: s.treeNode, rootLabel: s.treeRootLabel, subForest: s.treeSubForest };
+
+  const styles = { node: {}, rootLabel: {}, subForest: {} };
+
+  return {
+    rootLabel,
+    getVisibility,
+    alterTree,
+    cssClasses,
+    styles
+  }
 }
 
 export default Commands;
