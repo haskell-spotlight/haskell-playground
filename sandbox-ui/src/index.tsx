@@ -1,9 +1,9 @@
 import React from 'react';
 import { render as reactDOMRender } from 'react-dom';
-import _Widget, { WidgetProps } from './Widget/Widget';
+import _App, { AppProps } from './App/App';
 
-export const Widget = _Widget;
+export const App = _App;
 
-export function render(target: HTMLElement, props: WidgetProps) {
-  reactDOMRender(<Widget {...props} />, target);
+export function render(target: HTMLElement, props: AppProps) {
+  reactDOMRender(<App {...props} />, target);
 }

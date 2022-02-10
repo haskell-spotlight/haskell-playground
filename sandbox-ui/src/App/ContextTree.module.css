@@ -49,7 +49,7 @@
 .fsTreeNodeFile {
 }
 
-.fsTreeNodeActive {
+.fsTreeNodeActive .fsTreeNodeName {
   color: var(--purple-color-2);
 }
 
@@ -70,6 +70,7 @@
 }
 
 .fsTreeNodeName {
+  color: var(--text-color);
   flex: 1;
   white-space: nowrap;
   text-overflow: ellipsis;

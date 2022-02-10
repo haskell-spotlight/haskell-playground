@@ -5,15 +5,18 @@ export type Tree = api.Tree;
 export type TreeNode = api.Node;
 export type TreePath = string[];
 
-export type TreeProps<CTX> = {
+export const pathToUrl = (path: TreePath): string => path.map(encodeURIComponent).join('/');
+export const pathFromUrl = (url: string): TreePath => url.split('/').map(decodeURIComponent);
+
+export type TreeProps<NC> = {
   tree: Tree,
   path: TreePath,
-  renderNode: RenderNode<CTX>,
+  renderNode: RenderNode<NC>,
   getPathPart: (tree: Tree) => string,
-  ctx: CTX
+  nodeCommons: NC
 }
 
-export type RenderNode<CTX> = (node: TreeNode, path: TreePath, ctx: CTX) => ({
+export type RenderNode<NC> = (node: TreeNode, path: TreePath, ctx: NC) => ({
   getVisibility: (tree: Tree, path: TreePath) => {
     tree: boolean,
     rootLabel: boolean,
@@ -33,10 +36,8 @@ export type RenderNode<CTX> = (node: TreeNode, path: TreePath, ctx: CTX) => ({
   }
 });
 
-function TreeView<CTX>(props: TreeProps<CTX>) {
-  const pathPart = props.getPathPart(props.tree);
-  const path = props.path.concat(pathPart);
-  const { alterTree, getVisibility, rootLabel, cssClasses, styles } = props.renderNode(props.tree.rootLabel, path, props.ctx);
+function TreeView<NC>(props: TreeProps<NC>) {
+  const { alterTree, getVisibility, rootLabel, cssClasses, styles } = props.renderNode(props.tree.rootLabel, props.path, props.nodeCommons);
   const tree = alterTree(props.tree, props.path);
   const visibility = getVisibility(tree, props.path);
 
@@ -49,14 +50,18 @@ function TreeView<CTX>(props: TreeProps<CTX>) {
       )}
       {visibility.subForest && tree.subForest.length > 0 && (
         <div className={cssClasses.subForest} style={styles.subForest}>
-          {tree.subForest.map(tree => (
-            <TreeView
-              key={JSON.stringify(tree.rootLabel)}
-              {...props}
-              tree={tree}
-              path={path}
-            />
-          ))}
+          {tree.subForest.map(tree => {
+            const pathPart = props.getPathPart(tree);
+            const path = props.path.concat([pathPart]);
+            return (
+              <TreeView
+                key={path.reduce((k, p) => k + p, '')}
+                {...props}
+                tree={tree}
+                path={path}
+              />
+            )
+          })}
         </div>
       )}
     </div>

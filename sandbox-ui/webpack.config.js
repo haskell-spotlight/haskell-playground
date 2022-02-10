@@ -39,12 +39,12 @@ module.exports = () => {
           port: 4242,
           devMiddleware: {
             writeToDisk: true,
-          }
+          },
         }
       : undefined,
     plugins: [
       new HtmlWebpackPlugin({
-        template: "src/index.html",
+        template: "src/index.html"
       }),
     ],
     module: {
@@ -84,7 +84,7 @@ module.exports = () => {
     },
     output: {
       path: path.resolve(__dirname, "./dist"),
-      filename: "[name].js",
+      filename: "public/[name].js",
       library: {
         name: "HSPG",
         type: "umd",

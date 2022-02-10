@@ -25,7 +25,7 @@ sandboxApi = Proxy
 sandboxSwagger :: Swagger
 sandboxSwagger =
   toSwagger sandboxApi
-    & basePath ?~ "/api"
+    & basePath ?~ "/_/api"
     & info . title .~ "Haskell Playground Sandbox API"
     & info . version .~ "1.0"
     & info . description ?~ "https://github.com/haskell-spotlight/haskell-playground"

@@ -56,7 +56,6 @@ renderRoute config upstream = T.replace "${HSPG_PUBLIC_URL}" (publicUrl config) 
       proxy_set_header Host $host;
       proxy_pass_request_headers on;
       sub_filter_once off;
-      sub_filter_types text/html;
       sub_filter "href=\"./" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/";
       sub_filter "src=\"./" "src=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/";
       sub_filter "href=\"manifest.json\"" "href=\"${HSPG_PUBLIC_URL}/commands/${UPSTREAM_NAME}/manifest.json\"";
@@ -114,7 +113,7 @@ http {
 
     ${ROUTES}
 
-    location /api/ {
+    location /_/api/ {
       proxy_pass http://api/;
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
@@ -122,17 +121,23 @@ http {
       proxy_pass_request_headers on;
     }
 
-    location /ui/ {
+    location ~* /public/(.*) {
       sendfile on;
       sendfile_max_chunk 5m;
       tcp_nopush on;
       tcp_nodelay on;
 
-      alias ${UI_DIST}/;
+      alias ${UI_DIST}/public/$1;
     }
 
     location / {
-      return 301 $scheme://$http_host/ui/;
+      sendfile on;
+      sendfile_max_chunk 5m;
+      tcp_nopush on;
+      tcp_nodelay on;
+
+      root ${UI_DIST};
+      try_files $uri /index.html;
     }
   }
 }
