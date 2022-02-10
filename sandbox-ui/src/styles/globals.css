@@ -8,6 +8,7 @@
   font-family: "Fira Sans", sans-serif;
   color: var(--text-color);
   line-height: 1.4;
+  letter-spacing: 0.4px;
   font-variant-ligatures: none;
   --background-color: #f6eedc;
   --background-color-backdrop: rgba(94, 80, 134, 0.8);

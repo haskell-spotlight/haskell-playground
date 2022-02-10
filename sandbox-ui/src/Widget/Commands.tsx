@@ -1,45 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import * as s from './Commands.module.css';
-import TreeView, { RenderNode, Tree } from '../react-haskell/Data/Tree/TreeView';
+import TreeView, { RenderNode, Tree, TreePath } from '../react-haskell/Data/Tree/TreeView';
 import * as api from '../api';
-import SvgIcon from '../icons/SVGIcon';
-import arrowDownIcon from '!!raw-loader!../icons/arrow-down.svg';
-import arrowRightIcon from '!!raw-loader!../icons/arrow-right.svg';
-import termIcon from '!!raw-loader!../icons/term.svg';
-import viewIcon from '!!raw-loader!../icons/view.svg';
-import checkUnknownIcon from '!!raw-loader!../icons/check-unknown.svg';
 
 type CommandsProps = {
   serverUrl?: string
 }
-
+type TreeCtx = {
+  onClick: (path: TreePath) => void,
+  isActive: (path: TreePath) => boolean
+};
 const Commands = (props: CommandsProps) => {
   const [client, setClient] = useState<ReturnType<typeof api.DefaultApiFp>>();
-  const [fsTree, setFsTree] = useState<api.Tree>();
-  const [activeCommand, setActiveCommand] = useState<string[]>([]);
+  const [tree, setTree] = useState<api.Tree>();
+  const [activeNode, setActiveNode] = useState<TreePath>([]);
 
   useEffect(() => {
     (async () => {
       const client = api.DefaultApiFp();
       setClient(client);
       const tree = await (await (await client.fsTreeGet(['TermFile', 'CheckFile', 'ViewFile']))()).data;
-      setFsTree(tree);
-
-      const defaultCommand = tree.subForest.find(c => c.rootLabel.File && c.rootLabel.File.name.match(/^.*\.default\.(term|check|view)\.([^.]*)$/));
-      if (defaultCommand) {
-        setActiveCommand(['.', defaultCommand.rootLabel.File!.name]);
-      }
+      setTree(tree);
+      setActiveNode([getPathPart(tree)]);
     })()
   }, []);
 
   return (
     <div>
-      {fsTree && (
+      {tree && (
         <div className={s.treeContainer}>
-          <TreeView
-            tree={fsTree}
-            depth={0}
+          <TreeView<TreeCtx>
+            tree={tree}
+            path={[getPathPart(tree)]}
             renderNode={renderNode}
+            getPathPart={getPathPart}
+            ctx={{
+              onClick: (path) => setActiveNode(path),
+              isActive: (path) => JSON.stringify(activeNode) === JSON.stringify(path)
+            }}
           />
         </div>
       )}
@@ -48,61 +46,37 @@ const Commands = (props: CommandsProps) => {
   )
 }
 
+const getPathPart = (tree: Tree) => (tree.rootLabel.Dir?.name || tree.rootLabel.File?.name) as string;
 const sortSubForest = (tree: Tree): Tree => {
-  const files = tree.subForest.filter(t => t.rootLabel.File)
-    .sort((a, b) => a.rootLabel.File!.name.localeCompare(b.rootLabel.File!.name));
   const dirs = tree.subForest.filter(t => t.rootLabel.Dir)
     .sort((a, b) => a.rootLabel.Dir!.name.localeCompare(b.rootLabel.Dir!.name));
 
   return {
     ...tree,
-    subForest: [...dirs, ...files]
+    subForest: [...dirs]
   }
 }
 
-const renderNode: RenderNode = (tree, depth) => {
-  const isRoot = depth === 0;
-  const [isCollapsed, setIsCollapsed] = useState(!isRoot);
-
-  let label = '';
-  let icon = null;
-
-  if (tree.Dir) {
-    label = tree.Dir.name;
-    icon = <SvgIcon svg={isCollapsed ? arrowRightIcon : arrowDownIcon} style={{ transform: 'scale(1.5)', fill: 'var(--text-color)' }} />
-
-  } else if (tree.File && (tree.File.kind === 'TermFile')) {
-    label = tree.File?.name.replace(/\.term\.([^.]*)$/, '');
-    icon = <SvgIcon svg={termIcon} style={{ fill: 'var(--text-color)' }} />
-
-  } else if (tree.File && (tree.File.kind === 'CheckFile')) {
-    label = tree.File?.name.replace(/\.check\.([^.]*)$/, '');
-    icon = <SvgIcon svg={checkUnknownIcon} style={{ fill: 'var(--text-color)' }} />
-
-  }
-  else if (tree.File && tree.File.kind === 'ViewFile') {
-    label = tree.File.name.replace(/\.(view)\.([^.]*)$/, '.$2');
-    icon = <SvgIcon svg={viewIcon} style={{ fill: 'var(--text-color)' }} />
-  }
-
-  label = label.replace(/^(.*)\.default\.([^.]*)$/, '$1.$2');
+const renderNode: RenderNode<TreeCtx> = (node, path, props) => {
+  const isRoot = path.length === 0;
+  const isActive = props.isActive(path);
+  let label = node.Dir?.name;
 
   const rootLabel = (
     <div
-      className={`${s.fsTreeNode} ${tree.Dir ? s.fsTreeNodeDir : s.fsTreeNodeFile}`}
+      className={`${s.fsTreeNode} ${node.Dir ? s.fsTreeNodeDir : s.fsTreeNodeFile} ${isActive ? s.fsTreeNodeActive : ''}`}
       title={label}
-      onClick={() => setIsCollapsed(!isCollapsed)}
+      onClick={() => props.onClick(path)}
     >
-      {isRoot ? null : Array.from(Array(depth - 1)).map((_, i) => <div key={i} className={s.fsTreeNodeIndent}></div>)}
-      <div className={s.fsTreeNodeIcon}>{icon}</div>
+      {isRoot ? null : Array.from(Array(path.length - 1)).map((_, i) => <div key={i} className={s.fsTreeNodeIndent}></div>)}
       <div className={s.fsTreeNodeName}>{label}</div>
     </div>
   );
 
   const getVisibility = (_: Tree) => ({
     tree: true,
-    rootLabel: !isRoot,
-    subForest: isRoot || !isCollapsed
+    rootLabel: true,
+    subForest: true
   });
 
   const alterTree = sortSubForest;

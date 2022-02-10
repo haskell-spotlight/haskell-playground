@@ -3,20 +3,23 @@ import * as api from '../../../api';
 
 export type Tree = api.Tree;
 export type TreeNode = api.Node;
+export type TreePath = string[];
 
-export type TreeProps = {
+export type TreeProps<CTX> = {
   tree: Tree,
-  depth: number,
-  renderNode: RenderNode,
+  path: TreePath,
+  renderNode: RenderNode<CTX>,
+  getPathPart: (tree: Tree) => string,
+  ctx: CTX
 }
 
-export type RenderNode = (tree: TreeNode, depth: number) => ({
-  getVisibility: (tree: Tree, depth: number) => {
+export type RenderNode<CTX> = (node: TreeNode, path: TreePath, ctx: CTX) => ({
+  getVisibility: (tree: Tree, path: TreePath) => {
     tree: boolean,
     rootLabel: boolean,
     subForest: boolean
   },
-  alterTree: (tree: Tree, depth: number) => Tree,
+  alterTree: (tree: Tree, path: TreePath) => Tree,
   rootLabel: React.ReactNode,
   cssClasses: {
     node: string,
@@ -30,10 +33,12 @@ export type RenderNode = (tree: TreeNode, depth: number) => ({
   }
 });
 
-const TreeView = (props: TreeProps) => {
-  const { alterTree, getVisibility, rootLabel, cssClasses, styles } = props.renderNode(props.tree.rootLabel, props.depth);
-  const tree = alterTree(props.tree, props.depth);
-  const visibility = getVisibility(tree, props.depth);
+function TreeView<CTX>(props: TreeProps<CTX>) {
+  const pathPart = props.getPathPart(props.tree);
+  const path = props.path.concat(pathPart);
+  const { alterTree, getVisibility, rootLabel, cssClasses, styles } = props.renderNode(props.tree.rootLabel, path, props.ctx);
+  const tree = alterTree(props.tree, props.path);
+  const visibility = getVisibility(tree, props.path);
 
   return !visibility.tree ? null : (
     <div className={cssClasses.node} style={styles.node}>
@@ -49,7 +54,7 @@ const TreeView = (props: TreeProps) => {
               key={JSON.stringify(tree.rootLabel)}
               {...props}
               tree={tree}
-              depth={props.depth + 1}
+              path={path}
             />
           ))}
         </div>

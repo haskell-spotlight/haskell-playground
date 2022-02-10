@@ -37,6 +37,7 @@ data Command
   = TermCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text}
   | CheckCommand {commandId :: T.Text, relPath :: FilePath, terminalUrl :: T.Text, runs :: [CheckCommandRun]}
   | ViewCommand {commandId :: T.Text, relPath :: FilePath, publicUrl :: T.Text, mimeType :: T.Text }
+  | LinkCommand {commandId :: T.Text, relPath :: FilePath, linkTo :: T.Text }
   deriving (Eq, Show, Generic)
 
 instance ToJSON ExitCode

@@ -7,7 +7,7 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Sandbox.FileSystem (Fs, Node, FileKind (TermFile, CheckFile, ViewFile, AnyFile), readAsTree, readAsList, treeToList, filterByFileKinds) where
+module Sandbox.FileSystem (Fs, Node, FileKind (TermFile, CheckFile, ViewFile, UnknownFile), readAsTree, readAsList, treeToList, filterByFileKinds) where
 
 import Data.Aeson
 import Data.List (intercalate)
@@ -22,7 +22,7 @@ import Servant ( FromHttpApiData(parseQueryParam) )
 import qualified System.Directory as SD
 import qualified System.FilePath as FP
 
-data FileKind = TermFile | CheckFile | ViewFile | AnyFile
+data FileKind = TermFile | CheckFile | ViewFile | UnknownFile
   deriving (Eq, Show, Generic)
 
 instance ToJSON FileKind
@@ -35,7 +35,7 @@ instance FromHttpApiData FileKind where
   parseQueryParam "TermFile" = Right TermFile
   parseQueryParam "CheckFile" = Right CheckFile
   parseQueryParam "ViewFile" = Right ViewFile
-  parseQueryParam "AnyFile" = Right AnyFile
+  parseQueryParam "UnknownFile" = Right UnknownFile
   parseQueryParam _ = Left "Wrong file kind provided"
 
 determineFileKind :: FilePath -> FileKind
@@ -43,7 +43,7 @@ determineFileKind filePath
   | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".term" = TermFile
   | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".check" = CheckFile
   | FP.takeExtension (FP.dropExtension (FP.takeExtensions filePath)) == ".view" = ViewFile
-  | otherwise = AnyFile
+  | otherwise = UnknownFile
 
 data Node = File {name :: FilePath, kind :: FileKind} | Dir {name :: FilePath}
   deriving (Eq, Show, Generic)
@@ -98,20 +98,20 @@ filterByFileKinds byKinds = TR.foldTree foldFn
         sfn TR.Node {rootLabel = File {kind}} = kind `elem` byKinds
         sfn TR.Node {rootLabel = Dir {}, subForest} = not (all (null . filterByFileKinds byKinds) subForest)
 
-readFsRecursive :: FilePath -> [FilePath] -> Bool -> IO (Maybe Fs)
-readFsRecursive filePath excludeFiles isRoot = do
+readFsRecursive :: FilePath -> [FilePath] -> IO (Maybe Fs)
+readFsRecursive filePath excludeFiles = do
   let isExcluded = any (\toExclude -> toExclude == FP.takeFileName filePath) excludeFiles
   isExists <- SD.doesPathExist filePath
 
   if isExcluded || not isExists
     then pure Nothing
     else do
-      let name = if isRoot then "." else FP.takeFileName filePath
+      let name = FP.takeFileName filePath
       isDir <- SD.doesDirectoryExist filePath
       if isDir
         then do
           files <- SD.listDirectory filePath
-          childrenM <- mapM (\c -> readFsRecursive (FP.combine filePath c) excludeFiles False) files
+          childrenM <- mapM (\c -> readFsRecursive (FP.combine filePath c) excludeFiles) files
           let subForest = Data.Maybe.catMaybes childrenM
 
           let dir = TR.Node {rootLabel = Dir {name}, subForest}
@@ -122,7 +122,7 @@ readFsRecursive filePath excludeFiles isRoot = do
           pure $ Just file
 
 readAsTree :: FilePath -> [FilePath] -> IO (Maybe Fs)
-readAsTree root excludeFiles = readFsRecursive root excludeFiles True
+readAsTree = readFsRecursive
 
 readAsList :: FilePath -> [FilePath] -> IO (Maybe [FilePath])
 readAsList root excludeFiles = do
